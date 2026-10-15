@@ -1,0 +1,22 @@
+{
+  "artifact": "rabdam_custom_bnet_reference.csv",
+  "database_id": "pdb_redo_8_20_202606_strict_cryo_bnet",
+  "eligibility_policy_id": "rabdam2_strict_cryo_v1",
+  "entry_count": 124948,
+  "metric_kind": "protein_cryo_asp_glu_bnet",
+  "schema_version": "1.0",
+  "sha256": "56f15160ca8e1c5cc598efcc5e229e02d9ef3fcde15eb5c23758f3e0154d8ed3",
+  "source": {
+    "path": "database/reference/database.csv",
+    "project": "rabdam-custom",
+    "project_version": "1.0.0",
+    "ref": "main",
+    "repository": "https://github.com/snell-lab/rabdam-custom"
+  },
+  "upstream_provenance": {
+    "attribution": "Derived from PDB-REDO databank entries; credit PDB-REDO and the original authors of the structural data.",
+    "build_manifest": "https://github.com/snell-lab/rabdam-custom/blob/main/database/reference/database.manifest.json",
+    "pdb_redo_snapshot": "8.20 (downloaded 2026-06)",
+    "usage_policy": "https://pdb-redo.eu/license"
+  }
+}

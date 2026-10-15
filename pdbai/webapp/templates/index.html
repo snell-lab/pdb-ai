@@ -1,0 +1,500 @@
+{#- Every engine setting is declared once by its engine; this panel, the
+    command line, and the JSON API are generated from it. A setting that
+    refines another sits beneath it, and its own refinements beneath it in
+    turn, however deep the declarations go. Every control is named by its
+    request key, so the form's fields match the JSON API. -#}
+{% macro engine_setting(option) -%}
+  {% set field_id = "option-" ~ option.name %}
+  {% set hint_id = field_id ~ "-hint" %}
+  {% set refinement_class = " option-refinement" if option.refines else "" %}
+  {% if option.kind == "flag" %}
+    <label class="checkbox{{ refinement_class }}">
+      <input
+        type="checkbox"
+        id="{{ field_id }}"
+        name="{{ option.json_key }}"
+        value="true"
+        data-option="{{ option.name }}"
+        data-kind="flag"
+        {% if option.refines %}data-refines="{{ option.refines }}"{% else %}data-engine-toggle{% endif %}
+        {% if option.default %}checked{% endif %}
+        aria-describedby="{{ hint_id }}"
+      />
+      {{ option.label }}
+    </label>
+  {% elif option.kind == "choice" %}
+    <label for="{{ field_id }}"{% if option.refines %} class="option-refinement"{% endif %}>{{ option.label }}</label>
+    <select
+      id="{{ field_id }}"
+      name="{{ option.json_key }}"
+      {% if option.refines %}class="option-refinement"{% endif %}
+      data-option="{{ option.name }}"
+      data-kind="choice"
+      {% if option.refines %}data-refines="{{ option.refines }}"{% endif %}
+      aria-describedby="{{ hint_id }}"
+    >
+      {% for choice in option.choices %}
+        <option value="{{ choice }}"{% if choice == option.default %} selected{% endif %}>
+          {{ option.choice_labels[loop.index0] if option.choice_labels else choice }}
+        </option>
+      {% endfor %}
+    </select>
+  {% else %}
+    <label for="{{ field_id }}"{% if option.refines %} class="option-refinement"{% endif %}>{{ option.label }}</label>
+    <input
+      type="number"
+      min="1"
+      step="1"
+      id="{{ field_id }}"
+      name="{{ option.json_key }}"
+      {% if option.refines %}class="option-refinement"{% endif %}
+      data-option="{{ option.name }}"
+      data-kind="count"
+      {% if option.refines %}data-refines="{{ option.refines }}"{% endif %}
+      aria-describedby="{{ hint_id }}"
+      placeholder="default"
+    />
+  {% endif %}
+  <p class="form-hint{{ refinement_class }}" id="{{ hint_id }}">{{ option.form_caption }}</p>
+  {% for refinement in engine_options if refinement.refines == option.name %}
+    {{ engine_setting(refinement) }}
+  {% endfor %}
+{%- endmacro %}
+{#- The build form and the filter tool share the modes and the column rules,
+    because both reach the same column filter on the server. -#}
+{% macro column_filter_mode_options() -%}
+  <option value="">No column filtering</option>
+  {% for mode in column_filter_modes %}
+  <option value="{{ mode }}">{{ mode|capitalize }} these columns</option>
+  {% endfor %}
+{%- endmacro %}
+{%- macro column_list_hint(hint_id, extra="") -%}
+  <p class="form-hint" id="{{ hint_id }}">
+    Separate column names with commas, semicolons, or new lines. A <code>*</code>
+    matches any run of characters, so <code>*factor*</code> matches every column
+    containing <code>factor</code> and <code>_cell.*</code> every column starting
+    with <code>_cell.</code>. {{ extra }}
+  </p>
+{%- endmacro -%}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDB-AI, structural biology dataset builder</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="brand">
+          <img
+            class="brand__logo"
+            src="{{ url_for('static', filename='logo.svg') }}"
+            alt=""
+          />
+          <div class="brand__text">
+            <h1>PDB<span class="brand__accent">-AI</span></h1>
+            <p>AI/ML-ready structural biology datasets from PDB structures.</p>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="page">
+      <section class="panel form-panel">
+        <h2>Structural biology dataset builder</h2>
+        <p class="lede">
+          Provide PDB identifiers or mmCIF files, select the data and analysis
+          engines you need, and build consistent structural biology feature tables.
+        </p>
+        {# app.js finds each control by its ID and sends the request itself.
+           Each name is the API's request key for that control, and app.js
+           sends every engine setting under its name. #}
+        <form id="dataset-form" class="form-card">
+          <div class="field">
+            <label for="pdbIds">PDB identifiers</label>
+            <textarea
+              id="pdbIds"
+              name="pdbIds"
+              rows="4"
+              placeholder="5MCC, 4HHB"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="pdbIdsHint"
+            ></textarea>
+            <div class="example-chips" role="group" aria-label="Example PDB IDs">
+              <span class="example-chips__label">Try:</span>
+              <button type="button" class="chip" data-example="5MCC">5MCC</button>
+              <button type="button" class="chip" data-example="4HHB">4HHB</button>
+              <button type="button" class="chip" data-example="1Y13">1Y13</button>
+              <button type="button" class="chip chip--multi" data-example="5MCC, 4HHB, 1Y13">All three</button>
+            </div>
+            <p class="form-hint" id="pdbIdsHint" role="status">Four-character PDB codes, separated by commas, semicolons, or whitespace.</p>
+            {# Every range filter is declared once in pdbai.selection_filters;
+               the menu, the fields, the command line, and the JSON API are
+               generated from it. The menu lists every filter under its
+               quantity, and a field shows only while its filter is ticked, so
+               the form stays short however many filters are declared. Each
+               field is named by its request key. #}
+            <div class="select-row">
+              <button type="button" class="ghost small" id="selectFromPdbButton" aria-describedby="selectHint">
+                Find matching entries in the PDB
+              </button>
+              <details class="filter-menu" id="searchFilterMenu">
+                <summary class="ghost small">
+                  <span id="searchFilterMenuLabel">Filters</span>
+                  <span class="filter-menu__chevron" aria-hidden="true">▾</span>
+                </summary>
+                <div class="filter-menu__panel">
+                  {% for quantity in search_quantities %}
+                  <fieldset class="filter-menu__group">
+                    <legend>{{ quantity.label|capitalize }}</legend>
+                    {% for search_filter in search_filters if search_filter.quantity == quantity %}
+                    <label class="checkbox">
+                      <input type="checkbox" data-search-filter-toggle="{{ search_filter.json_key }}" />
+                      {{ search_filter.label }}
+                    </label>
+                    {% endfor %}
+                  </fieldset>
+                  {% endfor %}
+                  <fieldset class="filter-menu__group">
+                    <legend>Protein</legend>
+                    <label class="checkbox">
+                      <input type="checkbox" data-search-filter-toggle="{{ accession_filter.json_key }}" />
+                      {{ accession_filter.label }}
+                    </label>
+                  </fieldset>
+                </div>
+              </details>
+              <span class="select-row__hint" id="selectHint" role="status">
+                Or let the archive pick them, filling the box with every current
+                PDB entry that matches the technique and X-ray source chosen below
+                and any filter ticked here. The query and time are recorded in
+                the run manifest.
+              </span>
+            </div>
+            <div class="search-filters" id="searchFilters" hidden>
+              <div class="search-filters__fields">
+                {% for search_filter in search_filters %}
+                <div class="search-filters__field" data-search-quantity="{{ search_filter.quantity.id }}" hidden>
+                  <label for="searchFilter-{{ search_filter.id }}">{{ search_filter.label }}</label>
+                  <div class="search-filters__control">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      id="searchFilter-{{ search_filter.id }}"
+                      name="{{ search_filter.json_key }}"
+                      data-search-filter
+                    />
+                    <button
+                      type="button"
+                      class="search-filters__remove"
+                      data-search-filter-remove="{{ search_filter.json_key }}"
+                      aria-label="Remove the filter {{ search_filter.label }}"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                </div>
+                {% endfor %}
+                <div class="search-filters__field search-filters__field--wide" data-search-quantity="{{ accession_filter.id }}" hidden>
+                  <label for="searchFilter-{{ accession_filter.id }}">{{ accession_filter.label }}</label>
+                  <div class="search-filters__control">
+                    <textarea
+                      rows="3"
+                      id="searchFilter-{{ accession_filter.id }}"
+                      name="{{ accession_filter.json_key }}"
+                      data-search-filter
+                      data-search-filter-kind="accessions"
+                      placeholder="P00698, P0DTD1 …"
+                      spellcheck="false"
+                    ></textarea>
+                    <button
+                      type="button"
+                      class="search-filters__remove"
+                      data-search-filter-remove="{{ accession_filter.json_key }}"
+                      aria-label="Remove the filter {{ accession_filter.label }}"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p class="form-hint">
+                A filter narrows the search only. An entry is kept only when every
+                value it records is in range, and an entry that records none is
+                left out.
+              </p>
+              {% for quantity in search_quantities %}
+              <p class="form-hint" data-search-quantity-note="{{ quantity.id }}" hidden>{{ quantity.note }}</p>
+              {% endfor %}
+              <p class="form-hint" data-search-quantity-note="{{ accession_filter.id }}" hidden>{{ accession_filter.note }}</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="mmcifFiles">
+              Upload mmCIF files
+              <span class="tag">optional</span>
+            </label>
+            {# The file input covers the whole zone, so a click anywhere on it
+               opens the picker; the label above is the input's only name. #}
+            <div class="dropzone" id="mmcifDropzone">
+              <input
+                type="file"
+                id="mmcifFiles"
+                name="mmcifFiles"
+                accept="{{ accepted_suffixes|join(',') }}"
+                multiple
+                aria-describedby="mmcifFilesHint"
+              />
+              <div class="dropzone__inner">
+                <svg class="dropzone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M12 16V4m0 0l-4 4m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="dropzone__text">
+                  <strong>Drop mmCIF files here</strong>
+                  <span>or click to browse ({{ accepted_suffixes|join(", ") }})</span>
+                </div>
+                <div class="dropzone__files" id="mmcifFileList" hidden></div>
+              </div>
+            </div>
+            <p class="form-hint" id="mmcifFilesHint">
+              Build a dataset directly from one or more mmCIF files without entering PDB IDs.
+            </p>
+          </div>
+
+          <div class="field">
+            <label for="technique">
+              Experimental technique
+              <span class="tag">one per run</span>
+            </label>
+            <select id="technique" name="technique" aria-describedby="techniqueHint">
+              {% for technique in techniques %}
+              <option value="{{ technique.id }}"{% if technique.id == default_technique %} selected{% endif %}>{{ technique.display_label }}</option>
+              {% endfor %}
+            </select>
+            <p class="form-hint" id="techniqueHint">
+              The PDB's own method vocabulary. Entries recorded under any other
+              method are refused at intake, before anything is downloaded, and
+              listed as refused in the run report. Engines that do not apply to
+              the selected technique are switched off and locked below.
+            </p>
+          </div>
+
+          <div class="field" id="xraySourceField">
+            <label for="xraySource">
+              X-ray source
+              <span class="tag">optional</span>
+            </label>
+            <select id="xraySource" name="xraySource" aria-describedby="xraySourceHint">
+              <option value="{{ all_xray_sources }}" selected>All sources</option>
+              {% for source in xray_sources %}
+              <option value="{{ source.id }}">{{ source.display_label }}</option>
+              {% endfor %}
+            </select>
+            <p class="form-hint" id="xraySourceHint">
+              Second-level filter within X-ray diffraction. A specific source refuses
+              entries that report a different source, and entries that record no
+              source at all, saying which in the run report. Choose X-ray
+              free-electron laser (XFEL) for XFEL entries, which the PDB files
+              under X-ray diffraction.
+            </p>
+          </div>
+
+          <details class="advanced" id="columnFilterDetails">
+            <summary>
+              <span class="advanced__chevron" aria-hidden="true">›</span>
+              Column filter &amp; presets
+              <span class="tag">optional</span>
+            </summary>
+            <p>
+              Select a preset profile to automatically populate the column filter below, or
+              manually specify which columns to include or exclude.
+            </p>
+
+            <label for="columnProfile">Preset profile</label>
+            <select id="columnProfile" name="profileId" aria-describedby="profileDescription">
+              {% for profile in profiles %}
+              <option value="{{ profile.id }}">{{ profile.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="form-hint profile-description" id="profileDescription" hidden></p>
+
+            <label for="columnMode">Filter type</label>
+            <select id="columnMode" name="columnFilterMode">
+              {{ column_filter_mode_options() }}
+            </select>
+            <label for="columnFilterList">Columns to include or exclude</label>
+            <textarea
+              id="columnFilterList"
+              name="columnFilterList"
+              rows="6"
+              placeholder="pdb_id&#10;_atom_site.id&#10;x"
+              aria-describedby="columnFilterListHint"
+            ></textarea>
+            {{ column_list_hint("columnFilterListHint", "Selecting a profile above fills in these fields.") }}
+          </details>
+
+          <details class="advanced" id="enginesDetails">
+            <summary>
+              <span class="advanced__chevron" aria-hidden="true">›</span>
+              Data sources &amp; engines
+              <span class="tag">optional</span>
+            </summary>
+            <p>
+              A build from PDB identifiers downloads RCSB's standard mmCIF as its
+              base structure, and an upload uses the uploaded file instead.
+              Everything below is an engine you can switch on or off independently.
+            </p>
+
+            <div class="engine-toolbar">
+              <button type="button" id="engineSelectAllButton" class="ghost small">Select All</button>
+            </div>
+
+            {% for option in engine_options if not option.refines %}
+              {{ engine_setting(option) }}
+            {% endfor %}
+
+            <label for="datasetShape">Output dataset shape</label>
+            <select id="datasetShape" name="datasetShape" aria-describedby="datasetShapeHint">
+              {% for shape in dataset_shapes %}
+              <option value="{{ shape.name }}"{% if shape.name == default_dataset_shape %} selected{% endif %}>
+                {{ shape.label }}{% if shape.name == default_dataset_shape %} (default){% endif %}, {{ shape.description }}
+              </option>
+              {% endfor %}
+            </select>
+            <p class="form-hint" id="datasetShapeHint">
+              A star schema splits the output into linked CSVs, so per-atom rows do
+              not repeat every residue-, chain-, and structure-wide value.
+            </p>
+          </details>
+
+          <div class="form-actions">
+            <button type="submit" class="primary">Build dataset</button>
+            <button type="reset" class="ghost">Clear</button>
+          </div>
+        </form>
+        <div id="status" class="status" role="status" hidden>
+          <div id="status-text" class="status__text"></div>
+          <div id="status-progress" class="status__progress" hidden>
+            <div class="progress">
+              {# app.js sets the fill's width and aria-valuenow together. #}
+              <div
+                class="progress__fill"
+                id="progress-bar"
+                role="progressbar"
+                aria-label="Build progress"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              ></div>
+            </div>
+            <div class="status__meta" id="progress-meta"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Filter an existing dataset</h2>
+        <p class="lede">
+          Upload a previously generated CSV to include or exclude columns before downloading a
+          filtered copy.
+        </p>
+        {# app.js sends this form as multipart data itself, and reports a
+           missing file in its own words. #}
+        <form id="filter-form" class="form-card">
+          <div class="field">
+            <label for="filterFile">Dataset CSV</label>
+            <input type="file" id="filterFile" name="file" accept=".csv,text/csv" />
+          </div>
+
+          <div class="field">
+            <label for="filterMode">Filter type</label>
+            <select id="filterMode" name="columnFilterMode">
+              {{ column_filter_mode_options() }}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="filterColumns">Columns to include or exclude</label>
+            <textarea
+              id="filterColumns"
+              name="columnFilterList"
+              rows="4"
+              placeholder="pdb_id&#10;_atom_site.id"
+              aria-describedby="filterColumnsHint"
+            ></textarea>
+            {{ column_list_hint("filterColumnsHint") }}
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="primary">Filter dataset</button>
+            <button type="reset" class="ghost">Clear</button>
+          </div>
+        </form>
+        <div id="filter-status" class="status" role="status" hidden></div>
+        <div id="filter-results" class="panel panel--nested" hidden>
+          <div class="panel-heading">
+            <h3>Filtered dataset</h3>
+            <div class="download"></div>
+          </div>
+          <div class="summary-cards"></div>
+          <div class="warnings"></div>
+          <div class="preview"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Runs</h2>
+          <div class="runs-toolbar">
+            <button type="button" class="ghost" id="runsRefreshButton">Refresh</button>
+            <label class="checkbox auto-refresh-label">
+              <input type="checkbox" id="runsAutoRefresh" checked />
+              Auto-refresh while running
+            </label>
+          </div>
+        </div>
+        <p id="runs-status" class="status" role="status" hidden></p>
+        <p class="lede">
+          Every dataset build is tracked in a folder of its own under the working
+          directory's runs folder. Pause a long run, resume it later, or delete a
+          run you no longer need.
+        </p>
+        <div id="runs-empty" class="runs-empty">No runs yet. Start a build above.</div>
+        <div class="runs-table-wrap">
+          <table id="runs-table" class="runs-table" hidden>
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Started</th>
+                <th>Source</th>
+                <th class="run-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="results" class="panel" hidden>
+        <div class="panel-heading">
+          <h2>Run summary</h2>
+          <div class="download"></div>
+        </div>
+        <div class="summary-cards"></div>
+        <div class="warnings"></div>
+        <div class="preview"></div>
+      </section>
+    </main>
+
+    <script type="application/json" id="pdbaiConfig">{{ page_config|tojson }}</script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

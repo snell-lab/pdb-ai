@@ -1,0 +1,35 @@
+{
+  "radiolysis_rate_constants": {
+    "artifact": "radiolysis_rate_constants.csv",
+    "sha256": "bccd08d42501e10850fdbb7a6ddaa91c115a2cef70dda3ff07d56ea9d801435b",
+    "row_count": 132,
+    "selected_count": 38,
+    "radicals": ["OH", "e_aq"],
+    "format": "Comma-separated, one row per value printed in the source: residue (three-letter code; cystine under CYS with form 'cystine: ...'), radical (OH for the hydroxyl radical, e_aq for the hydrated electron), form (the species as the source names it), k_M_per_s (dm3 mol-1 s-1), k_qualifier ('<' upper limit, '~' approximate, empty otherwise), pH (as printed; empty for an average), is_average (the source's italic average of the values listed beneath it), selected (one row per residue and radical: the average for the form that dominates at pH 7 where one is printed, otherwise the value nearest pH 7), buxton_entry, source_location (table, entry, journal page, and page of the PDF reprint), conditions (method and the source's reference code), notes.",
+    "citations": [
+      {
+        "citation": "Buxton, G. V., Greenstock, C. L., Helman, W. P. & Ross, A. B. (1988). Critical review of rate constants for reactions of hydrated electrons, hydrogen atoms and hydroxyl radicals (.OH/.O-) in aqueous solution. J. Phys. Chem. Ref. Data 17, 513-886.",
+        "doi": "10.1063/1.555805",
+        "covers": "every row: Table 6 (hydrated electron) and Table 8 (hydroxyl radical)"
+      }
+    ],
+    "source": {
+      "read_from": "https://srd.nist.gov/jpcrdreprint/1.555805.pdf",
+      "method": "Each value was transcribed from page images of the scanned reprint, rendered at 200 dpi and again at 400 to 800 dpi where a digit was in doubt. The reprint's text layer was not used. Four entries (Phe and Trp with the hydroxyl radical and the hydrated electron, His and Tyr with the hydrated electron) were checked against the page images a second time.",
+      "cross_check": "The NDRL/NIST Solution Kinetics Database (https://kinetics.nist.gov/solution/) gives the same value for every one of the 32 hydroxyl-radical and glycine records read there that corresponds to an entry of the source. Its two later values, Met 7.4e9 at pH 7.4 and His 4.8e9 at pH 7.5, are not in the table.",
+      "compiled": "2026-10-09"
+    },
+    "left_out": [
+      "Hydrogen-atom rate constants, which the table does not cover.",
+      "The hydrated electron with Gln and with Ile: the source has no entry for either.",
+      "Values after 1988, which the source predates."
+    ],
+    "reading_notes": [
+      "His with the hydrated electron at pH ~7 is printed faintly as '0 x 10^7' and read as 6 x 10^7, consistent with the printed average of 6.4 x 10^7.",
+      "The pH of Pro with the hydrated electron is printed faintly as '0.7' and read as 6.7.",
+      "The rate constant of His with the hydrated electron depends steeply on pH near the imidazole pKa of 6.0: the source gives 2.8 x 10^9 for HisH+ at pH 4.82 and, in a comment, 9.0 x 10^8 at pH 6.52. The selected value is that of the neutral imidazole.",
+      "Cys with the hydroxyl radical: the three values (1.9 to 4.7 x 10^10) scatter, and the selected average (3.4 x 10^10) lies above the diffusion limit.",
+      "Thr and Glu with the hydrated electron have two discordant values and no average; the value at pH 7 is selected. Val, Leu, Ser, and Glu with the hydrated electron are upper limits."
+    ]
+  }
+}

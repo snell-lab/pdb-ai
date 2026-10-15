@@ -1,0 +1,88 @@
+# This project runs from a clone. Dependencies stay in the two requirements files,
+# and the metadata intentionally omits a build backend and console entry point.
+[project]
+name = "pdbai"
+version = "1.0.0"
+description = "Analysis-ready structural biology datasets for AI and machine learning from Protein Data Bank structures."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Dominic Sellitto", email = "dmsellit@buffalo.edu" },
+    { name = "Nicolas Rolfe", email = "nrolfe@proton.me" },
+]
+keywords = [
+    "artificial intelligence",
+    "scientific datasets",
+    "protein data bank",
+    "crystallography",
+    "mmcif",
+    "structural biology",
+    "machine learning",
+    "radiation damage",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+[project.urls]
+Homepage = "https://github.com/dmsellit/pdb-ai"
+Repository = "https://github.com/dmsellit/pdb-ai"
+Issues = "https://github.com/dmsellit/pdb-ai/issues"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+    "C4",
+    "PIE",
+    "N",
+    "D",
+]
+ignore = [
+    "E501",
+    "SIM115",
+    "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D1"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["pdbai", "tests"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+include = ["pdbai", "tests"]
+extraPaths = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+
+[tool.djlint]
+profile = "jinja"
+# H023 refuses every character entity. The textarea placeholders write their
+# line breaks as &#10;, because a literal newline inside an attribute puts the
+# rest of the value at column one.
+ignore = "H023"

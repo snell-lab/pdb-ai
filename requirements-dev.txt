@@ -1,0 +1,7 @@
+djlint
+mypy
+pandas-stubs
+pyright
+pytest
+ruff
+scipy-stubs

@@ -1,0 +1,11 @@
+flask
+gemmi
+numpy
+packaging
+pandas
+requests
+scipy
+urllib3>=1.26
+
+# This is the only BDamage, Bnet, and packing-density implementation used here.
+rabdam @ git+https://github.com/snell-lab/rabdam-custom.git@main

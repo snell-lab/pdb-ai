@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use PDB-AI in your research, please cite it as below."
+title: "PDB-AI"
+abstract: >-
+  A Python toolkit for building analysis-ready structural biology datasets for
+  artificial intelligence and machine learning from Protein Data Bank
+  structures. PDB-AI preserves atom-level RCSB mmCIF records and enriches them
+  through modular source and analysis engines. Current engines provide PDB-Redo
+  comparisons, BDamage and Bnet radiation-damage scores, solvent accessibility,
+  wwPDB validation data, UniProt mappings, and AlphaFold Database confidence.
+  Each run emits a machine-readable manifest and a data dictionary suitable for
+  citation as supplementary material.
+type: software
+authors:
+  - given-names: "Dominic"
+    family-names: "Sellitto"
+    email: dmsellit@buffalo.edu
+  - given-names: "Nicolas"
+    family-names: "Rolfe"
+    email: nrolfe@proton.me
+repository-code: "https://github.com/dmsellit/pdb-ai"
+license: Apache-2.0
+version: "1.0.0"
+keywords:
+  - artificial intelligence
+  - scientific datasets
+  - structural biology
+  - machine learning
+  - protein data bank
+  - crystallography
+  - mmCIF
+  - radiation damage

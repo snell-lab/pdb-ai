@@ -1,0 +1,41 @@
+// Formats and lints the web app's script and stylesheet. The Jinja template is
+// checked by djlint (see pyproject.toml), since Biome does not read Jinja.
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": {
+    "includes": ["pdbai/webapp/static/*.js", "pdbai/webapp/static/*.css"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 115
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "css": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "linter": {
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // The stylesheet is ordered by page section, not by specificity. The
+        // pairs the rule finds either style different tables or set different
+        // properties, so no rule is shadowed.
+        "noDescendingSpecificity": "off"
+      },
+      "suspicious": {
+        // app.js is a classic script, not a module, so 'use strict' is needed.
+        "noRedundantUseStrict": "off",
+        // The page passes expression arrows to forEach for their side effects,
+        // and the value they return is ignored.
+        "useIterableCallbackReturn": "off"
+      }
+    }
+  }
+}
