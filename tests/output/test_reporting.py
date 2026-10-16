@@ -41,7 +41,6 @@ def test_run_report_distinguishes_disabled_engines_from_failures(
         state="failed",
         output_error="Annotation failed for 2XYZ: engine exploded",
         metadata_message="metadata incomplete",
-        metadata_level="error",
         engine_report={
             "validation_status": "parse_failed",
             "validation_message": "validation XML malformed",
@@ -92,7 +91,6 @@ def test_run_report_distinguishes_disabled_engines_from_failures(
     assert rows[1]["parse_error"] == ""
     assert rows[1]["output_error"] == "Annotation failed for 2XYZ: engine exploded"
     assert rows[1]["metadata_message"] == "metadata incomplete"
-    assert rows[1]["metadata_level"] == "error"
     assert rows[1]["validation_status"] == "parse_failed"
     assert rows[1]["validation_message"] == "validation XML malformed"
     assert rows[1]["sasa_message"] == "unsupported atom"
@@ -173,7 +171,6 @@ def test_run_report_fills_every_host_column_of_a_fully_recorded_entry(
         output_error="Disk full.",
         metadata_ok=True,
         metadata_message="Fetched.",
-        metadata_level="info",
     )
 
     write_run_report(report_path, [result], report_fields=[], engine_table_names=[])

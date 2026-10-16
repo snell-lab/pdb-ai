@@ -50,13 +50,6 @@ class ColumnFilterSummary:
         }
 
 
-# How an RCSB metadata fetch went. "info" comes with a fetched record, and
-# "error" with a failed fetch and its message.
-type MetadataLevel = Literal["info", "error"]
-
-_METADATA_LEVELS: frozenset[str] = frozenset(get_args(MetadataLevel.__value__))
-
-
 @dataclass
 class MetadataFetchResult:
     """The outcome of fetching an entry's RCSB record."""
@@ -64,7 +57,6 @@ class MetadataFetchResult:
     metadata: dict[str, object]
     ok: bool
     message: str | None = None
-    level: MetadataLevel | None = None
     # The raw entry record the metadata was extracted from, for engines that
     # need more of it than the normalized fields.
     entry_record: dict[str, object] | None = None
@@ -103,10 +95,6 @@ def _is_technique_status(value: object) -> TypeGuard[TechniqueStatus]:
 
 def _is_dataset_source(value: object) -> TypeGuard[DatasetSource]:
     return isinstance(value, str) and value in ALL_DATASET_SOURCES
-
-
-def _is_metadata_level(value: object) -> TypeGuard[MetadataLevel]:
-    return isinstance(value, str) and value in _METADATA_LEVELS
 
 
 def _report_value(value: object) -> ReportValue:
@@ -152,7 +140,6 @@ class PdbProcessResult:
     # None, since the error may have come before the fetch.
     metadata_ok: bool | None = None
     metadata_message: str | None = None
-    metadata_level: MetadataLevel | None = None
     engine_table_row_counts: dict[str, int] = field(default_factory=dict[str, int])
     engine_report: dict[str, ReportValue] = field(
         default_factory=dict[str, ReportValue]
@@ -200,7 +187,6 @@ class PdbProcessResult:
             "output_error": self.output_error,
             "metadata_ok": self.metadata_ok,
             "metadata_message": self.metadata_message,
-            "metadata_level": self.metadata_level,
             "engine_report": dict(self.engine_report),
             "engine_table_row_counts": dict(self.engine_table_row_counts),
         }
@@ -218,15 +204,15 @@ class PdbProcessResult:
         The run report uses this for an entry the current build did not
         record. The entry is JSON from disk, so each value is checked and the
         read never raises. An unknown state reads as pending, and an unknown
-        source as ``default_source``. An unknown technique status or metadata
-        level reads as None. A download or parse flag that is missing or not
-        True reads as False, which is what a pending entry needs, since its
-        manifest entry holds only its state. A metadata flag that is missing
-        or not a Boolean reads as None, meaning unknown. A malformed engine
-        report value becomes None, and a malformed table row count is
-        dropped. A resumed run does not use this result to decide what to
-        skip. It trusts a stored done state only when a partial exists for
-        every table the run writes.
+        source as ``default_source``. An unknown technique status reads as
+        None. A download or parse flag that is missing or not True reads as
+        False, which is what a pending entry needs, since its manifest entry
+        holds only its state. A metadata flag that is missing or not a
+        Boolean reads as None, meaning unknown. A malformed engine report
+        value becomes None, and a malformed table row count is dropped. A key
+        this result has no field for is ignored. A resumed run does not use
+        this result to decide what to skip. It trusts a stored done state
+        only when a partial exists for every table the run writes.
         """
         raw_state = entry.get("state")
         state = raw_state if _is_process_state(raw_state) else "pending"
@@ -237,7 +223,6 @@ class PdbProcessResult:
         technique_status = (
             raw_technique_status if _is_technique_status(raw_technique_status) else None
         )
-        raw_level = entry.get("metadata_level")
         return cls(
             pdb_id=pdb_id,
             source=source,
@@ -253,7 +238,6 @@ class PdbProcessResult:
             output_error=_optional_string(entry.get("output_error")),
             metadata_ok=_optional_bool(entry.get("metadata_ok")),
             metadata_message=_optional_string(entry.get("metadata_message")),
-            metadata_level=raw_level if _is_metadata_level(raw_level) else None,
             engine_table_row_counts={
                 table: count
                 for table, count in object_dict(

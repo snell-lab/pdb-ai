@@ -32,8 +32,8 @@ from ..engines.catalog import get_engine_registry
 from ..engines.compatibility import require_compatible_options
 from ..engines.core import DatasetSource, EngineOptions
 from ..identifiers import normalize_pdb_id
-from ..integers import positive_int
 from ..json_values import str_list
+from ..positive_numbers import positive_int
 from ..results import DatasetBuildResult, RunPausedError
 from ..runs import (
     ProgressCallback,

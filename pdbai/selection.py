@@ -35,8 +35,8 @@ from .engines.core import (
     get_xray_source,
 )
 from .identifiers import normalize_pdb_id
-from .integers import positive_int
 from .network import DEFAULT_TIMEOUT_SECONDS, create_retry_session, network_logger
+from .positive_numbers import positive_int
 from .selection_filters import (
     SEARCH_FILTERS,
     UNIPROT_ACCESSIONS,

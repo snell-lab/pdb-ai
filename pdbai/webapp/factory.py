@@ -44,7 +44,7 @@ from ..engines.core import (
     XRAY_SOURCE_TECHNIQUE,
     XRAY_SOURCES,
 )
-from ..integers import parse_positive_int
+from ..positive_numbers import parse_positive_int
 from ..profiles import PROFILES
 from ..runs import PREVIEW_ROW_COUNT, ProgressStage
 from ..selection_filters import SEARCH_FILTERS, SEARCH_QUANTITIES, UNIPROT_ACCESSIONS

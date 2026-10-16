@@ -27,9 +27,10 @@ are its two parts for an engine that selects rows before it names them.
 
 refinement.py reads how an entry was refined from the same flat dictionary:
 its refinement programs, its TLS groups, and the share of its atom sites
-with an anisotropic record. The parser writes them as entry-level columns,
-and read_refinement_fields is exported for a reader that needs them without
-the atom rows.
+with an anisotropic record. The parser writes them as entry-level columns.
+
+elements.py holds the element symbols of hydrogen and its isotopes, so that
+every reader that leaves hydrogens out leaves out the same atoms.
 
 alignment.py pairs each atom of an RCSB atom table with the same atom in its
 PDB-Redo re-refinement, one to one or not at all. It rejects the whole
@@ -45,12 +46,9 @@ entry, so that only that entry fails.
 
 from .cif_numbers import coerce_cif_numbers
 from .mmcif_parser import parse_mmcif_atom_rows, read_mmcif_as_flat_dict
-from .refinement import RefinementFields, read_refinement_fields
 from .residue_identity import (
-    RESIDUE_NUMBERING_AUTHOR,
     RESIDUE_NUMBERING_COLUMN,
     RESIDUE_NUMBERING_LABEL,
-    AtomSiteResidueIdentity,
     ResidueNumbering,
     atom_site_residue_identity,
     atom_site_residue_names,
@@ -58,11 +56,8 @@ from .residue_identity import (
 )
 
 __all__ = [
-    "RESIDUE_NUMBERING_AUTHOR",
     "RESIDUE_NUMBERING_COLUMN",
     "RESIDUE_NUMBERING_LABEL",
-    "AtomSiteResidueIdentity",
-    "RefinementFields",
     "ResidueNumbering",
     "atom_site_residue_identity",
     "atom_site_residue_names",
@@ -70,5 +65,4 @@ __all__ = [
     "coerce_cif_numbers",
     "parse_mmcif_atom_rows",
     "read_mmcif_as_flat_dict",
-    "read_refinement_fields",
 ]

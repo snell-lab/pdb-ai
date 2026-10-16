@@ -31,12 +31,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from .elements import HYDROGEN_ELEMENTS
 from .residue_identity import (
     ResidueIdentities,
     ResidueKey,
     build_author_residue_keys,
     build_residue_identities,
-    first_nonempty_string_series,
+    clean_string_series,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,14 +47,13 @@ logger = logging.getLogger(__name__)
 # both sides.
 _MISPAIRING_SHIFT_LIMIT_ANGSTROM = 1.0
 
-_ATOM_NAME_COLUMNS = ("atom_name", "_atom_site.label_atom_id")
-_ELEMENT_COLUMNS = ("element", "_atom_site.type_symbol")
-_COORDINATE_COLUMNS = (
-    ("x", "_atom_site.Cartn_x"),
-    ("y", "_atom_site.Cartn_y"),
-    ("z", "_atom_site.Cartn_z"),
-)
-_HYDROGEN_SYMBOLS = frozenset({"H", "D"})
+# The parser's named columns the aligner reads. Every table it is given is
+# one parse_mmcif_atom_rows wrote, or one narrowed to identity_columns and
+# coordinate_columns, so it holds them and the mmCIF items they were read
+# from are never needed here.
+_ATOM_NAME_COLUMN = "atom_name"
+_ELEMENT_COLUMN = "element"
+_COORDINATE_COLUMNS = ("x", "y", "z")
 
 # Every column that build_residue_identities or the atom-name lookup reads. A
 # DataFrame narrowed to these columns keeps the identity of each atom.
@@ -77,7 +77,7 @@ _IDENTITY_COLUMNS = (
     "_pdbai_polymer_type",
     "_pdbai_entity_type",
     "_pdbai_chem_comp_type",
-    *_ATOM_NAME_COLUMNS,
+    _ATOM_NAME_COLUMN,
 )
 
 # An atom's identity across files, which is its author residue key followed
@@ -142,12 +142,7 @@ def coordinate_columns(dataframe: pd.DataFrame) -> list[str]:
     A caller that narrows a DataFrame before alignment keeps these, so the
     distance check can still measure how far paired atoms moved.
     """
-    return [
-        column
-        for names in _COORDINATE_COLUMNS
-        for column in names
-        if column in dataframe.columns
-    ]
+    return [column for column in _COORDINATE_COLUMNS if column in dataframe.columns]
 
 
 def protein_heavy_atom_mask(
@@ -158,14 +153,14 @@ def protein_heavy_atom_mask(
     These are the protein heavy atoms. PDB-Redo strips deposited hydrogens
     and remodels waters. Counting those atoms as misses would make a match
     rate report modelling choices instead of alignment quality. Hydrogen and
-    deuterium are recognized by element symbol, and an atom without a symbol
+    its isotopes are recognized by element symbol, and an atom without a symbol
     counts as heavy. When the DataFrame has no protein heavy atom, as in a
     nucleic-acid entry, every heavy atom counts. When it has no heavy atom
     either, every atom counts. Pass ``identities`` when the DataFrame's
     residue identities are already built.
     """
-    element = first_nonempty_string_series(dataframe, _ELEMENT_COLUMNS).str.upper()
-    heavy = ~element.isin(_HYDROGEN_SYMBOLS).to_numpy(dtype=bool)
+    element = clean_string_series(dataframe, _ELEMENT_COLUMN).str.upper()
+    heavy = ~element.isin(HYDROGEN_ELEMENTS).to_numpy(dtype=bool)
     if identities is None:
         identities = build_residue_identities(dataframe)
     protein_heavy = identities.protein_polymer.to_numpy(dtype=bool) & heavy
@@ -233,17 +228,18 @@ def _with_label_chains_as_author(
 def _coordinate_matrix(dataframe: pd.DataFrame) -> npt.NDArray[np.float64] | None:
     """Return one row of x, y, z per atom, or None when an axis has no column.
 
-    Each axis is read from the first of its column names present. A
-    coordinate that is not a number reads as NaN.
+    A coordinate that is not a number reads as NaN.
     """
-    axes: list[npt.NDArray[np.float64]] = []
-    for names in _COORDINATE_COLUMNS:
-        present = [column for column in names if column in dataframe.columns]
-        if not present:
-            return None
-        values = pd.to_numeric(dataframe[present[0]], errors="coerce")
-        axes.append(np.asarray(values, dtype=np.float64))
-    return np.column_stack(axes)
+    if not set(_COORDINATE_COLUMNS) <= set(dataframe.columns):
+        return None
+    return np.column_stack(
+        [
+            np.asarray(
+                pd.to_numeric(dataframe[axis], errors="coerce"), dtype=np.float64
+            )
+            for axis in _COORDINATE_COLUMNS
+        ]
+    )
 
 
 def _median_shift(
@@ -297,14 +293,10 @@ def align(
 
     pdb_redo_keys, pdb_redo_ambiguous = _atom_identities(
         build_residue_identities(pdb_redo_dataframe),
-        first_nonempty_string_series(
-            pdb_redo_dataframe, _ATOM_NAME_COLUMNS
-        ).str.upper(),
+        clean_string_series(pdb_redo_dataframe, _ATOM_NAME_COLUMN).str.upper(),
     )
     rcsb_identities = build_residue_identities(rcsb_dataframe)
-    rcsb_atom_names = first_nonempty_string_series(
-        rcsb_dataframe, _ATOM_NAME_COLUMNS
-    ).str.upper()
+    rcsb_atom_names = clean_string_series(rcsb_dataframe, _ATOM_NAME_COLUMN).str.upper()
     rcsb_keys, rcsb_ambiguous = _atom_identities(rcsb_identities, rcsb_atom_names)
     partners = _partner_positions(rcsb_keys, pdb_redo_keys)
 

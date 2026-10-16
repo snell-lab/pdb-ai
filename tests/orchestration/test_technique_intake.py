@@ -315,7 +315,7 @@ def _harness(tmp_path: Path, options: EngineOptions | None = None) -> _Harness:
 
 
 def _metadata(**fields: Any) -> MetadataFetchResult:
-    return MetadataFetchResult(metadata=dict(fields), ok=True, level="info")
+    return MetadataFetchResult(metadata=dict(fields), ok=True)
 
 
 def test_mismatched_entry_is_refused_before_any_structure_download(
@@ -398,7 +398,6 @@ def test_unfetched_record_leaves_intake_to_the_file(
             metadata={},
             ok=False,
             message="Metadata fetch failed for 1ABC: timed out",
-            level="error",
         )
 
     monkeypatch.setattr(download_module, "fetch_rcsb_metadata", failed_fetch)

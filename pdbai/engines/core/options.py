@@ -25,7 +25,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Literal, cast
 
-from ...integers import parse_positive_int, positive_int
+from ...positive_numbers import parse_positive_int, positive_int
 from .techniques import (
     ALL_XRAY_SOURCES,
     DEFAULT_TECHNIQUE,

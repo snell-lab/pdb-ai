@@ -328,12 +328,6 @@ def test_narrowing_to_identity_columns_keeps_every_residue_identity(
     _assert_same_identities(full, narrowed)
 
 
-def test_identity_columns_keep_the_atom_name_under_either_spelling() -> None:
-    full = _fully_populated_dataframe().drop(columns=["atom_name"])
-
-    assert "_atom_site.label_atom_id" in alignment.identity_columns(full)
-
-
 def test_narrowing_a_dataframe_preserves_every_author_key() -> None:
     full = _fully_populated_dataframe()
     narrowed = full[alignment.identity_columns(full)]
@@ -544,26 +538,10 @@ def test_mispairing_guard_is_skipped_when_one_side_lacks_coordinates() -> None:
     assert result.diagnostics.rejected_reason is None
 
 
-def test_mispairing_guard_reads_mmcif_coordinate_columns() -> None:
-    rcsb = _coordinate_dataframe(n=3, offset=0.0)
-    pdb_redo = _coordinate_dataframe(n=3, offset=30.0).rename(
-        columns={
-            "x": "_atom_site.Cartn_x",
-            "y": "_atom_site.Cartn_y",
-            "z": "_atom_site.Cartn_z",
-        }
-    )
+def test_coordinate_columns_reports_the_axes_that_exist() -> None:
+    dataframe = pd.DataFrame({"x": [0.0], "z": [0.0], "other": [1]})
 
-    result = _align(rcsb, pdb_redo, carry_columns=["_atom_site.Cartn_x"])
-
-    assert result.diagnostics.rejected_reason is not None
-    assert "median 30.0 Å apart" in result.diagnostics.rejected_reason
-
-
-def test_coordinate_columns_reports_whichever_aliases_exist() -> None:
-    dataframe = pd.DataFrame({"x": [0.0], "_atom_site.Cartn_y": [0.0], "other": [1]})
-
-    assert alignment.coordinate_columns(dataframe) == ["x", "_atom_site.Cartn_y"]
+    assert alignment.coordinate_columns(dataframe) == ["x", "z"]
 
 
 def _protein_and_solvent_dataframe(
@@ -662,21 +640,14 @@ def test_match_rate_is_zero_for_an_empty_rcsb_dataframe() -> None:
     assert result.columns.empty
 
 
-def test_protein_heavy_atom_mask_reads_the_mmcif_element_column() -> None:
-    dataframe = _protein_and_solvent_dataframe(
-        include_hydrogen=True, include_water=True
-    ).rename(columns={"element": "_atom_site.type_symbol"})
-
-    mask = alignment.protein_heavy_atom_mask(dataframe)
-
-    assert mask.tolist() == [True, True, False, False]
-
-
-def test_protein_heavy_atom_mask_excludes_deuterium_in_any_case() -> None:
+@pytest.mark.parametrize("isotope", ["d", "T"])
+def test_protein_heavy_atom_mask_excludes_hydrogen_isotopes_in_any_case(
+    isotope: str,
+) -> None:
     dataframe = _protein_and_solvent_dataframe(
         include_hydrogen=True, include_water=False
     )
-    dataframe["element"] = ["N", "C", "d"]
+    dataframe["element"] = ["N", "C", isotope]
 
     mask = alignment.protein_heavy_atom_mask(dataframe)
 

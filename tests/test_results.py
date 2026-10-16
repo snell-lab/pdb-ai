@@ -129,29 +129,32 @@ def test_a_missing_metadata_flag_reads_as_unknown_in_every_state(state: str) -> 
     assert restored.metadata_succeeded() is None
 
 
-def test_a_stored_metadata_flag_and_level_are_read_back() -> None:
+def test_a_stored_metadata_flag_and_message_are_read_back() -> None:
     restored = PdbProcessResult.from_manifest(
         "1ABC",
         {
             "state": "done",
             "metadata_ok": False,
             "metadata_message": "RCSB record unavailable",
-            "metadata_level": "error",
         },
         default_source="download",
     )
 
     assert restored.metadata_succeeded() is False
-    assert restored.metadata_level == "error"
+    assert restored.metadata_message == "RCSB record unavailable"
 
 
-@pytest.mark.parametrize("level", ["warning", 1, ["error"]])
-def test_an_unknown_metadata_level_reads_as_none(level: object) -> None:
+def test_a_manifest_key_with_no_field_is_ignored() -> None:
+    # Manifests of earlier builds also stored a metadata level beside the
+    # flag, and such a manifest still reads.
     restored = PdbProcessResult.from_manifest(
-        "1ABC", {"state": "done", "metadata_level": level}, default_source="download"
+        "1ABC",
+        {"state": "done", "metadata_ok": True, "metadata_level": "info"},
+        default_source="download",
     )
 
-    assert restored.metadata_level is None
+    assert restored.metadata_succeeded() is True
+    assert "metadata_level" not in restored.to_manifest()
 
 
 def test_a_result_survives_its_manifest_round_trip() -> None:

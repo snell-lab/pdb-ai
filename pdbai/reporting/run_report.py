@@ -46,7 +46,6 @@ def _host_cells(result: PdbProcessResult) -> dict[str, object]:
         "output_error": result.output_error,
         "metadata_success": result.metadata_succeeded(),
         "metadata_message": result.metadata_message,
-        "metadata_level": result.metadata_level,
     }
 
 

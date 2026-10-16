@@ -39,8 +39,8 @@ from ..engines.core import (
     OptionValue,
 )
 from ..identifiers import normalize_pdb_id
-from ..integers import parse_positive_int
 from ..json_values import object_list, str_list
+from ..positive_numbers import parse_positive_int
 from ..profiles import PROFILES, RunSettings, resolve_run_settings
 from ..selection_filters import SEARCH_FILTERS, UNIPROT_ACCESSIONS
 

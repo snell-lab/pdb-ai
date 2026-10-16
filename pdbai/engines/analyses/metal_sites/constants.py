@@ -9,6 +9,8 @@ source before it is cited.
 
 from __future__ import annotations
 
+from ....structure.elements import HYDROGEN_ELEMENTS
+
 # The radius in Å within which donor atoms are looked for around a metal.
 # It is a search radius only. A bond is inferred within the first sphere,
 # which is always smaller.
@@ -127,8 +129,6 @@ METAL_ELEMENTS: frozenset[str] = frozenset(
 # The elements a donor atom may have. Hydrogen and deuterium are absent, so
 # they are never donors, in a neutron model or any other.
 DONOR_ELEMENTS: frozenset[str] = frozenset({"N", "O", "S"})
-
-HYDROGEN_ELEMENTS: frozenset[str] = frozenset({"H", "D", "T"})
 
 # The atoms of each standard amino acid that the distance search may infer as
 # donors. The backbone carbonyl oxygen is allowed for every residue. Amide

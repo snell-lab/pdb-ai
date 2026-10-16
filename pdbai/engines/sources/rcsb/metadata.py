@@ -98,7 +98,6 @@ def fetch_rcsb_metadata(
                 metadata={},
                 ok=False,
                 message=f"Metadata fetch failed for {normalized_id}: {exception}",
-                level="error",
             )
         write_envelope(metadata_cache_path, {"entry": entry_json})
 
@@ -110,7 +109,6 @@ def fetch_rcsb_metadata(
         },
         ok=True,
         message=None,
-        level="info",
         entry_record=entry_json,
         cached=cached,
     )

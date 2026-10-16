@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 from .engines.core import camel_case
-from .measurements import parse_positive_number, positive_number
+from .positive_numbers import parse_positive_number, positive_number
 
 type Bound = Literal["min", "max"]
 
@@ -326,24 +326,12 @@ class AccessionFilter:
 UNIPROT_ACCESSIONS = AccessionFilter()
 
 
-def _checked_filters(filters: tuple[RangeFilter, ...]) -> tuple[RangeFilter, ...]:
-    # Two declarations of one bound would share an identifier, a flag, and a
-    # key, so the second is a mistake in this module.
-    identifiers = [search_filter.id for search_filter in filters]
-    repeated = sorted({name for name in identifiers if identifiers.count(name) > 1})
-    if repeated:
-        raise ValueError(f"Search filters declared twice: {', '.join(repeated)}")
-    return filters
-
-
 # Every range filter, in the order the flags, the form fields, and the
 # criteria text list them. The bounds of one quantity stay together.
-SEARCH_FILTERS: tuple[RangeFilter, ...] = _checked_filters(
-    (
-        RangeFilter(TEMPERATURE, "min"),
-        RangeFilter(TEMPERATURE, "max"),
-        RangeFilter(RESOLUTION, "max"),
-    )
+SEARCH_FILTERS: tuple[RangeFilter, ...] = (
+    RangeFilter(TEMPERATURE, "min"),
+    RangeFilter(TEMPERATURE, "max"),
+    RangeFilter(RESOLUTION, "max"),
 )
 SEARCH_FILTER_IDS: tuple[str, ...] = tuple(
     search_filter.id for search_filter in SEARCH_FILTERS

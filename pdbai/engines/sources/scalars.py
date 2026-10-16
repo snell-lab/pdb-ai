@@ -6,7 +6,7 @@ read numbers from their responses through to_float and to_int. Both return
 None for a value that is not a number, so one malformed field leaves its
 column empty. It does not fail the entry.
 
-Both are stricter than float() and int(), in the way pdbai.integers is.
+Both are stricter than float() and int(), as pdbai.positive_numbers is.
 Text must be ASCII decimal digits, with an optional sign in front and, for
 to_float, one decimal point. Text with an exponent, an underscore, a sign
 anywhere else, or a word such as "nan" or "inf" is refused, although Python

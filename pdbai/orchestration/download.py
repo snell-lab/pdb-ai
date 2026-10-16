@@ -94,7 +94,6 @@ class DownloadAcquirer:
             source="download",
             metadata_ok=metadata.ok,
             metadata_message=metadata.message,
-            metadata_level=metadata.level,
         )
         # Without a record there is nothing to decide on yet, so the entry is
         # downloaded and its structure file decides once parsed.

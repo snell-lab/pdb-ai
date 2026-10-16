@@ -225,8 +225,7 @@ pdb-ai/
 │   ├── network.py                       # Retry sessions and network logging
 │   ├── console_logging.py               # [pdbai]-prefixed standard-error logging
 │   ├── json_values.py                   # Type narrowing for values read from JSON
-│   ├── integers.py                      # Shared positive-integer checks
-│   ├── measurements.py                  # Shared positive-number checks
+│   ├── positive_numbers.py              # Shared positive-integer and positive-number checks
 │   ├── nullable_booleans.py             # Strict nullable-boolean reading
 │   ├── refused_values.py                # Refused values quoted in error messages
 │   ├── missing_text.py                  # Texts read as missing values
@@ -236,6 +235,7 @@ pdb-ai/
 │   ├── licenses.py                      # Dependency license auditor
 │   ├── structure/                       # Shared structural-data infrastructure
 │   │   ├── cif_numbers.py               # CIF number grammar shared by every reader
+│   │   ├── elements.py                  # Hydrogen element symbols shared by every reader
 │   │   ├── mmcif_parser.py              # mmCIF → base atom frame
 │   │   ├── mmcif_fields.py              # Raw mmCIF expansion and cell geometry
 │   │   ├── refinement.py                # Refinement programs, TLS groups, anisotropic share

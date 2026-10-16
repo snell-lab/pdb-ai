@@ -76,6 +76,7 @@ from .residue_identity import (
     atom_site_residue_identity,
     atom_site_residue_numbering,
     build_residue_identities,
+    hetatm_record_flags,
     text_series,
 )
 
@@ -351,23 +352,6 @@ def _model_numbers(dataframe: pd.DataFrame) -> pd.Series:
             f"{listed_values(dataframe.loc[fractional, item])}."
         )
     return numbers.astype("Int64")
-
-
-def _hetatm_flags(dataframe: pd.DataFrame) -> pd.Series:
-    """Return whether each atom is a HETATM record.
-
-    Raises ValueError naming _atom_site.group_PDB when a row holds anything
-    but ATOM or HETATM, in any letter case.
-    """
-    item = "_atom_site.group_PDB"
-    record_types = text_series(dataframe, item).str.upper()
-    unknown = ~record_types.isin(("ATOM", "HETATM"))
-    if unknown.any():
-        raise ValueError(
-            f"mmCIF item {item} must be ATOM or HETATM on every row, but holds "
-            f"{listed_values(dataframe.loc[unknown, item])}."
-        )
-    return record_types.eq("HETATM")
 
 
 def _anisotropic_columns(mmcif_dict: _MmcifDict, atom_ids: pd.Series) -> pd.DataFrame:
@@ -691,7 +675,7 @@ def _atom_rows(
     # Record types are checked on every row, before the conformer choice
     # drops any. A bad record type on a dropped conformer is still refused,
     # and the refusal is this parser's rather than the residue reader's.
-    is_hetatm = _hetatm_flags(dataframe)
+    is_hetatm = hetatm_record_flags(dataframe)
     # The numbering is the file's, so it is decided on every row too. An
     # engine that reads the file again then decides as the parser did.
     numbering = atom_site_residue_numbering(dataframe)

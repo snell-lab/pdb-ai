@@ -102,7 +102,7 @@ flag does not say that it does.
 
 **Anisotropic records.** `anisotropic_atom_fraction` is the share of the
 file's atom sites that have a record in `_atom_site_anisotrop`. Atoms of
-element H or D are left out of both counts, since a refinement that gives every
+element H, D, or T are left out of both counts, since a refinement that gives every
 other atom a tensor often still lets its hydrogens ride on their parents with
 one isotropic value. The atom sites are those of the file, every alternate
 conformer and every model, so the fraction does not depend on the conformer the

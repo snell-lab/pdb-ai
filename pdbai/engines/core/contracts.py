@@ -727,7 +727,6 @@ HOST_REPORT_COLUMNS: tuple[str, ...] = (
     "output_error",
     "metadata_success",
     "metadata_message",
-    "metadata_level",
 )
 
 # The run report gives each engine table a column that holds its row count.

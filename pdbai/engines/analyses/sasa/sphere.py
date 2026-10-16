@@ -25,7 +25,7 @@ from functools import lru_cache
 import numpy as np
 from scipy.spatial import cKDTree
 
-from ....integers import positive_int
+from ....positive_numbers import positive_int
 from .constants import (
     SASA_ACCURACY_POINT_COUNTS,
     SASA_DEFAULT_N_SPHERE_POINTS,

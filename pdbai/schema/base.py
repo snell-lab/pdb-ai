@@ -560,7 +560,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         description=(
             "Fraction (0-1) of the file's atom sites that have an anisotropic "
             "displacement record (_atom_site_anisotrop), over every alternate "
-            "conformer and model, with atoms of element H or D left out. 0 for "
+            "conformer and model, with atoms of element H, D, or T left out. 0 for "
             "a file without such records, which is how an isotropic refinement "
             "is deposited. A refinement with TLS groups can write a record for "
             "every atom of a group, so read it beside tls_group_count. Missing "

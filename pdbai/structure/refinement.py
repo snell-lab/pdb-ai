@@ -49,6 +49,8 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from .elements import HYDROGEN_ELEMENTS
+
 # The _software.classification of a program the model was refined with. It is
 # matched in any letter case.
 _REFINEMENT_CLASSIFICATION = "refinement"
@@ -56,10 +58,6 @@ _REFINEMENT_CLASSIFICATION = "refinement"
 # What separates the names in refinement_programs, as in experimental_methods
 # and radiation_sources.
 _PROGRAM_SEPARATOR = "; "
-
-# Hydrogen and deuterium by element symbol. An atom without a symbol is not
-# taken to be either.
-_HYDROGEN_SYMBOLS = frozenset({"H", "D"})
 
 # A file read flat, as read_mmcif_as_flat_dict of mmcif_parser.py returns it.
 _MmcifDict = Mapping[str, Sequence[str | None]]
@@ -160,7 +158,7 @@ def _anisotropic_atom_fraction(mmcif_dict: _MmcifDict) -> float | None:
     heavy_atom_ids = [
         atom_id
         for atom_id, symbol in zip(atom_ids, symbols, strict=True)
-        if symbol is None or symbol.upper() not in _HYDROGEN_SYMBOLS
+        if symbol is None or symbol.upper() not in HYDROGEN_ELEMENTS
     ]
     if not heavy_atom_ids:
         return None

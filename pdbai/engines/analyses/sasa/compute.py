@@ -37,6 +37,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ....structure.elements import HYDROGEN_ELEMENTS
 from ....structure.residue_identity import (
     ResidueIdentities,
     build_residue_identities,
@@ -426,7 +427,7 @@ def _fill_atom_and_residue_columns(
     # Hydrogens are neither targets nor occluders, because the DSSP radii and
     # the Tien maxima are for heavy atoms. An atom with no element is judged by
     # its name.
-    is_hydrogen = elements.isin(("H", "D")) | (
+    is_hydrogen = elements.isin(HYDROGEN_ELEMENTS) | (
         elements.eq("") & atom_names.str.startswith(("H", "D"))
     )
     heavy = ~is_hydrogen.to_numpy(dtype=bool)

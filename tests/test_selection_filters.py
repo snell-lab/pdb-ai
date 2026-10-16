@@ -4,7 +4,6 @@ from collections import Counter
 
 import pytest
 
-from pdbai import selection_filters
 from pdbai.selection_filters import (
     RESOLUTION,
     SEARCH_FILTER_IDS,
@@ -44,13 +43,6 @@ def test_every_filter_has_its_own_identifier_flag_and_key() -> None:
     # An identifier ends in its unit, as the dataset's column names do.
     assert all(f.id.endswith(f"_{f.quantity.unit_suffix}") for f in SEARCH_FILTERS)
     assert all(f.quantity.unit_suffix.isascii() for f in SEARCH_FILTERS)
-
-
-def test_a_filter_declared_twice_is_refused() -> None:
-    twice = (RangeFilter(TEMPERATURE, "min"), RangeFilter(TEMPERATURE, "min"))
-
-    with pytest.raises(ValueError, match="declared twice: min_temperature_K"):
-        selection_filters._checked_filters(twice)  # pyright: ignore[reportPrivateUsage]
 
 
 def test_a_filter_says_what_it_keeps_and_what_it_leaves_out() -> None:

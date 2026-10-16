@@ -43,6 +43,7 @@ from typing import Literal
 import pandas as pd
 
 from ..missing_text import MISSING_TEXTS
+from ..nullable_booleans import to_nullable_boolean
 from ..refused_values import listed_values
 
 ResidueKey = tuple[str, ...]
@@ -60,6 +61,7 @@ _AUTHOR_COMPONENT_ITEM = "_atom_site.auth_comp_id"
 _LABEL_CHAIN_ITEM = "_atom_site.label_asym_id"
 _LABEL_NUMBER_ITEM = "_atom_site.label_seq_id"
 _LABEL_COMPONENT_ITEM = "_atom_site.label_comp_id"
+_RECORD_TYPE_ITEM = "_atom_site.group_PDB"
 
 # The component IDs read as protein when no polymer type says otherwise. They
 # are the twenty standard amino acids, the ambiguous ASX, GLX, and UNK, and the
@@ -98,12 +100,6 @@ _PROTEIN_COMPONENT_IDS = frozenset(
         "PTR",
     }
 )
-
-# The spellings of a true and a false flag, compared in lower case. A missing
-# text also reads as false. HETATM and ATOM are here so that the mmCIF record
-# type reads as the is_hetatm flag.
-_TRUE_TEXTS = frozenset({"1", "1.0", "true", "t", "yes", "y", "hetatm"})
-_FALSE_TEXTS = frozenset({"0", "0.0", "false", "f", "no", "n", "atom"})
 
 
 def _stripped_text(values: pd.Series) -> pd.Series:
@@ -199,26 +195,38 @@ def first_numeric_series(
     return result
 
 
-def coerce_bool_series(dataframe: pd.DataFrame, column: str) -> pd.Series:
-    """Return a flag column as Booleans, reading a missing value as False.
+def hetatm_record_flags(dataframe: pd.DataFrame) -> pd.Series:
+    """Return whether each _atom_site row is a HETATM record.
 
-    The column may hold Booleans, the numbers 1 and 0, or text in any case and
-    with spaces around it. True is spelled true, t, yes, y, 1, 1.0, or HETATM,
-    and false is spelled false, f, no, n, 0, 0.0, or ATOM. A DataFrame without
-    the column gives False for every row. Raises ValueError naming the column
-    and the values it cannot read, rather than reading them as False.
+    The record type is _atom_site.group_PDB, which the DataFrame must hold.
+    Raises ValueError naming it when a row holds anything but ATOM or HETATM,
+    in any letter case.
     """
-    if column not in dataframe.columns:
-        return pd.Series(False, index=dataframe.index, dtype=bool)
-    values = dataframe[column]
-    if pd.api.types.is_bool_dtype(values.dtype):
-        return values.fillna(False).astype(bool)
-    normalized = _stripped_text(values).str.lower()
-    true = normalized.isin(_TRUE_TEXTS)
-    refused = ~(true | normalized.isin(_FALSE_TEXTS | MISSING_TEXTS))
-    if refused.any():
-        raise _refusal(column, values[refused], "flags")
-    return true.astype(bool)
+    record_types = text_series(dataframe, _RECORD_TYPE_ITEM).str.upper()
+    unknown = ~record_types.isin(("ATOM", "HETATM"))
+    if unknown.any():
+        refused = listed_values(dataframe.loc[unknown, _RECORD_TYPE_ITEM])
+        raise ValueError(
+            f"mmCIF item {_RECORD_TYPE_ITEM} must be ATOM or HETATM on every "
+            f"row, but holds {refused}."
+        )
+    return record_types.eq("HETATM")
+
+
+def _hetatm_mask(dataframe: pd.DataFrame) -> pd.Series:
+    """Return whether each atom table row is a HETATM record, False if unknown.
+
+    The parser's is_hetatm column holds Booleans, missing on no row it
+    writes. A table whose column filter removed that column may still hold
+    _atom_site.group_PDB, which is read as the parser reads it. A table with
+    neither reads as ATOM on every row.
+    """
+    if "is_hetatm" in dataframe.columns:
+        flags = to_nullable_boolean(dataframe["is_hetatm"], column="is_hetatm")
+        return flags.fillna(False).astype(bool)
+    if _RECORD_TYPE_ITEM in dataframe.columns:
+        return hetatm_record_flags(dataframe)
+    return pd.Series(False, index=dataframe.index, dtype=bool)
 
 
 @dataclass(frozen=True)
@@ -413,8 +421,8 @@ def build_residue_identities(dataframe: pd.DataFrame) -> ResidueIdentities:
     a table gets the same keys whichever numbering its named columns use.
     Whether a row is HETATM, which decides polymer membership where entity
     metadata is missing, is read from the is_hetatm column, or else from
-    _atom_site.group_PDB. Raises ValueError when that flag holds a value it
-    cannot read.
+    _atom_site.group_PDB. Raises ValueError when is_hetatm holds a value that
+    is not a Boolean, or _atom_site.group_PDB one that is not ATOM or HETATM.
     """
     pdb_id = clean_string_series(dataframe, "pdb_id")
     model = first_nonempty_string_series(
@@ -431,10 +439,7 @@ def build_residue_identities(dataframe: pd.DataFrame) -> ResidueIdentities:
         dataframe,
         ("res_name", _AUTHOR_COMPONENT_ITEM, _LABEL_COMPONENT_ITEM),
     ).str.upper()
-    hetatm_column = (
-        "is_hetatm" if "is_hetatm" in dataframe.columns else "_atom_site.group_PDB"
-    )
-    is_hetatm = coerce_bool_series(dataframe, hetatm_column)
+    is_hetatm = _hetatm_mask(dataframe)
 
     polymer_type = clean_string_series(dataframe, "_pdbai_polymer_type").str.lower()
     entity_type = clean_string_series(dataframe, "_pdbai_entity_type").str.lower()
@@ -556,8 +561,8 @@ __all__ = [
     "build_author_residue_keys",
     "build_residue_identities",
     "clean_string_series",
-    "coerce_bool_series",
     "first_nonempty_string_series",
     "first_numeric_series",
+    "hetatm_record_flags",
     "text_series",
 ]

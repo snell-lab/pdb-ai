@@ -45,8 +45,8 @@ from .engines.core import (
     get_xray_source,
 )
 from .identifiers import normalize_pdb_id
-from .integers import parse_positive_int
 from .orchestration import DEFAULT_MAX_WORKERS, build_atom_site_dataset
+from .positive_numbers import parse_positive_int
 from .profiles import PROFILES, RunSettings, resolve_run_settings
 from .results import DatasetBuildResult, NoDatasetError, PdbProcessResult
 from .runs import (

@@ -14,7 +14,6 @@ from pdbai.structure.residue_identity import (
     build_author_residue_keys,
     build_residue_identities,
     clean_string_series,
-    coerce_bool_series,
     first_nonempty_string_series,
     first_numeric_series,
 )
@@ -96,32 +95,6 @@ def test_first_numeric_series_refuses_text_that_is_not_a_number() -> None:
         first_numeric_series(dataframe, ("value",))
 
 
-@pytest.mark.parametrize(
-    ("values", "expected"),
-    [
-        (pd.Series([1, 0, pd.NA], dtype="Int64"), [True, False, False]),
-        (pd.Series([True, pd.NA], dtype="boolean"), [True, False]),
-        (pd.Series(["HETATM", " atom ", "<NA>"]), [True, False, False]),
-    ],
-)
-def test_coerce_bool_series_reads_every_dtype_a_flag_arrives_in(
-    values: pd.Series, expected: list[bool]
-) -> None:
-    result = coerce_bool_series(pd.DataFrame({"flag": values}), "flag")
-
-    assert result.tolist() == expected
-    assert result.dtype == bool
-
-
-def test_coerce_bool_series_counts_the_refused_values_it_does_not_list() -> None:
-    # The repeated a counts once, so seven values are refused. The message
-    # lists five and counts the other two.
-    dataframe = pd.DataFrame({"flag": ["a", "b", "c", "d", "e", "g", "h", "a"]})
-
-    with pytest.raises(ValueError, match=r"'e', and 2 more\.$"):
-        coerce_bool_series(dataframe, "flag")
-
-
 def test_a_polymer_residue_is_keyed_by_label_fields_and_others_by_author() -> None:
     label_fields = {"_atom_site.label_asym_id": "B", "_atom_site.label_seq_id": "3"}
     dataframe = pd.concat(
@@ -165,7 +138,23 @@ def test_group_pdb_decides_hetatm_when_the_flag_column_is_absent() -> None:
 def test_an_unknown_group_pdb_is_refused_rather_than_read_as_atom() -> None:
     dataframe = _residue(**{"_atom_site.group_PDB": "ANISOU"})
 
-    with pytest.raises(ValueError, match="'_atom_site.group_PDB'.*'ANISOU'"):
+    with pytest.raises(ValueError, match="_atom_site.group_PDB.*'ANISOU'"):
+        build_residue_identities(dataframe)
+
+
+def test_a_missing_hetatm_flag_reads_as_atom() -> None:
+    # After annotation is_hetatm is a nullable Boolean column. Without the
+    # flag the residue is polymer, as an ATOM record's would be.
+    dataframe = _residue()
+    dataframe["is_hetatm"] = pd.Series([pd.NA], dtype="boolean")
+
+    assert build_residue_identities(dataframe).polymer.tolist() == [True]
+
+
+def test_a_hetatm_flag_that_is_not_a_boolean_is_refused() -> None:
+    dataframe = _residue(is_hetatm="false")
+
+    with pytest.raises(ValueError, match="'is_hetatm'.*'false'"):
         build_residue_identities(dataframe)
 
 
@@ -292,47 +281,6 @@ def test_author_identity_keeps_insertion_code_and_residue_name() -> None:
         ("auth", "1ABC", "1", "A", "10", "B", "GLY"),
         ("auth", "1ABC", "1", "A", "10", "B", "ALA"),
     ]
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [("true", True), ("False", False), ("HETATM", True), ("ATOM", False)],
-)
-def test_boolean_coercion_does_not_treat_false_strings_as_true(
-    value: str, expected: bool
-) -> None:
-    result = coerce_bool_series(pd.DataFrame({"flag": [value]}), "flag")
-
-    assert bool(result.iloc[0]) is expected
-
-
-@pytest.mark.parametrize(
-    ("values", "expected"),
-    [
-        ([1.0, 0.0, None], [True, False, False]),
-        ([True, None], [True, False]),
-        ([" Yes ", "?"], [True, False]),
-    ],
-)
-def test_boolean_coercion_reads_numbers_and_missing_values(
-    values: list[object], expected: list[bool]
-) -> None:
-    result = coerce_bool_series(pd.DataFrame({"flag": values}), "flag")
-
-    assert result.tolist() == expected
-
-
-def test_boolean_coercion_refuses_a_value_that_is_not_a_flag() -> None:
-    with pytest.raises(
-        ValueError, match="'flag' holds value\\(s\\) that are not flags: 'maybe'"
-    ):
-        coerce_bool_series(pd.DataFrame({"flag": ["true", "maybe"]}), "flag")
-
-
-def test_boolean_coercion_reads_an_absent_column_as_false() -> None:
-    result = coerce_bool_series(pd.DataFrame({"other": [1, 2]}), "flag")
-
-    assert result.tolist() == [False, False]
 
 
 def _atom_site(
