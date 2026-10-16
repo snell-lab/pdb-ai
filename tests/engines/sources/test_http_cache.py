@@ -33,6 +33,17 @@ def test_an_envelope_round_trips_until_it_expires(tmp_path: Path) -> None:
     assert read_envelope(path) is None
 
 
+def test_a_time_slightly_ahead_still_counts_as_fresh(tmp_path: Path) -> None:
+    # File times and time.time() come from different clocks, so a fresh entry
+    # can read as a moment in the future. Far in the future is still wrong.
+    path = tmp_path / "entry.json"
+    path.write_text(json.dumps({"cached_at": time.time() + 0.5}), encoding="utf-8")
+    assert read_envelope(path) is not None
+
+    path.write_text(json.dumps({"cached_at": time.time() + 3600}), encoding="utf-8")
+    assert read_envelope(path) is None
+
+
 @pytest.mark.parametrize(
     "content", ["{not json", "", "[1, 2, 3]", '"a string"', "42", "null", "{}"]
 )

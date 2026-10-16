@@ -39,11 +39,16 @@ from ...network import network_logger
 
 CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 
+# File times and time.time() come from different clocks. On Windows a file
+# written a moment ago can carry a time a few milliseconds ahead of
+# time.time(), so a small lead is allowed.
+CLOCK_SKEW_SECONDS = 2.0
+
 
 def _is_fresh(timestamp: float) -> bool:
-    # A time in the future means the clock or the file is wrong, so it does
-    # not count as fresh.
-    return 0.0 <= time.time() - timestamp <= CACHE_TTL_SECONDS
+    # A time further in the future than the allowed skew means the clock or
+    # the file is wrong, so it does not count as fresh.
+    return -CLOCK_SKEW_SECONDS <= time.time() - timestamp <= CACHE_TTL_SECONDS
 
 
 def read_envelope(path: Path) -> dict[str, Any] | None:
