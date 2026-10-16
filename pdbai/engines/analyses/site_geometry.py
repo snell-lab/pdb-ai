@@ -31,8 +31,9 @@ import numpy.typing as npt
 import pandas as pd
 
 from ...structure.cif_numbers import coerce_cif_numbers
+from ...structure.elements import HYDROGEN_ELEMENTS
 from ...structure.residue_identity import clean_string_series
-from .metal_sites.constants import HYDROGEN_ELEMENTS, METAL_ELEMENTS
+from .metal_sites.constants import METAL_ELEMENTS
 
 # Two images of one atom closer than this in Å are one atom on a special
 # position, the cut-off gemmi's contact search uses for the same purpose.

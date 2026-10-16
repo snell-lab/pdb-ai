@@ -13,8 +13,6 @@ source before it is cited.
 
 from __future__ import annotations
 
-from ....structure.elements import HYDROGEN_ELEMENTS
-
 # The radius in Å within which donor atoms are looked for around a metal.
 # It is a search radius only. A bond is inferred within the first sphere,
 # which is always smaller.
@@ -250,7 +248,6 @@ __all__ = [
     "DONOR_RULES",
     "DONOR_WATER",
     "FIRST_SPHERE_TOLERANCE_A",
-    "HYDROGEN_ELEMENTS",
     "INFERRED_DONOR_ATOMS",
     "METAL_CONNECTION_TYPE",
     "METAL_ELEMENTS",

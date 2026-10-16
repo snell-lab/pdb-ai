@@ -51,6 +51,7 @@ import pandas as pd
 from scipy.spatial import cKDTree
 
 from ....structure.cif_numbers import coerce_cif_numbers
+from ....structure.elements import HYDROGEN_ELEMENTS
 from ...core import site_key_dataframe
 from ..site_geometry import (
     SPECIAL_POSITION_CUTOFF_A,
@@ -89,7 +90,6 @@ from .constants import (
     DONOR_OTHER,
     DONOR_WATER,
     FIRST_SPHERE_TOLERANCE_A,
-    HYDROGEN_ELEMENTS,
     INFERRED_DONOR_ATOMS,
     METAL_ELEMENTS,
     METAL_STATUS_DEGRADED,
