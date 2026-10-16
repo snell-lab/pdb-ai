@@ -9,7 +9,6 @@ import pytest
 
 from pdbai import cli
 from pdbai.engines.core import (
-    STRUCTURE_METADATA,
     ArtifactKey,
     ColumnSpec,
     EngineContext,
@@ -24,9 +23,10 @@ from pdbai.orchestration import build_atom_site_dataset_from_mmcif_files
 from pdbai.runs import open_run
 from pdbai.webapp import create_app
 
-# A third-party engine pair. The counter counts atoms and publishes the
-# count, and the reader reads it. Nothing outside this file knows about
-# either engine.
+# A stub engine pair, installed after the built-in engines. The counter
+# counts atoms and publishes the count, and the reader reads it. Nothing
+# outside this file knows about either engine, so whatever of them reaches
+# the outputs was carried there by their declarations alone.
 ATOM_COUNT = ArtifactKey("stub_atom_count", int)
 
 
@@ -36,7 +36,6 @@ class CountingEngine:
         display_name="Stub counter",
         phase=EnginePhase.ANNOTATION,
         toggle="include_stub",
-        consumes=(STRUCTURE_METADATA,),
         provides=(ATOM_COUNT,),
         options=(
             OptionSpec("include_stub", label="Stub analysis", help="Run the stub."),
@@ -86,7 +85,6 @@ class ReadingEngine:
         phase=EnginePhase.ANNOTATION,
         toggle="include_stub",
         dependencies=("stub_counter",),
-        consumes=(ATOM_COUNT,),
         columns=(ColumnSpec("stub_seen_count", group="Stub Fields"),),
     )
 

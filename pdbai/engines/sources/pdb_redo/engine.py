@@ -176,7 +176,6 @@ class PdbRedoStructureEngine:
         phase=EnginePhase.ANNOTATION,
         toggle="include_pdb_redo",
         dependencies=("pdb_redo_source",),
-        consumes=(STRUCTURE_METADATA,),
         provides=(PDB_REDO_DATAFRAME,),
         report_fields=(
             ReportField(

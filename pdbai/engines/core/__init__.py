@@ -35,7 +35,6 @@ result that breaks them counts as a failure of the engine.
 
 from .artifacts import (
     ENTRY_RECORD,
-    HOST_ARTIFACTS,
     STRUCTURE_CIF_PATH,
     STRUCTURE_METADATA,
     ArtifactKey,
@@ -124,7 +123,6 @@ __all__ = [
     "DEFAULT_DATASET_SHAPE",
     "DEFAULT_TECHNIQUE",
     "ENTRY_RECORD",
-    "HOST_ARTIFACTS",
     "HOST_REPORT_COLUMNS",
     "INTEGRATIVE_METHOD",
     "PROFILE_ML_MINIMAL",

@@ -40,8 +40,8 @@ python -m pdbai [PDB_IDS ...] [OPTIONS]
 RCSB's standard mmCIF is always the base structure source. Every other source
 and analysis is an engine, and its flags, help text, and defaults are generated
 from the settings the engine declares, so `python -m pdbai --help` is the full
-reference (an engine that code outside PDB-AI registers adds its own flags there
-too). The Python API takes the same settings by name in `EngineOptions.values`.
+reference. The Python API takes the same settings by name in
+`EngineOptions.values`.
 
 | Flag | Default | Setting | Purpose |
 |------|---------|---------|---------|
@@ -371,9 +371,8 @@ print(result.warnings)  # Non-fatal warnings
 ```
 
 `EngineOptions` holds the run-level fields (`technique`, `xray_source`,
-`dataset_shape`, `enabled_engines`) and, in `values`, every engine's settings
-keyed by the option name the engine declares, for built-in engines and engines
-registered from outside PDB-AI alike. It is frozen. Derive a variant with
+`dataset_shape`) and, in `values`, every engine's settings keyed by the option
+name the engine declares. It is frozen. Derive a variant with
 `options.with_values({"include_sasa": True})` or, for a run-level field,
 `dataclasses.replace(options, technique=...)`. Setting values are checked
 against each engine's declaration by

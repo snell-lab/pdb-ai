@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -220,24 +219,6 @@ def test_a_failed_engine_fills_its_columns_with_their_own_types() -> None:
     assert atoms["failed_text"].dtype == object
     assert atoms[["failed_number", "failed_flag", "failed_text"]].isna().all().all()
     assert atoms["tail"].tolist() == [1, 2, 3]
-
-
-def test_an_artifact_under_a_key_of_another_type_is_refused() -> None:
-    declared: ArtifactKey[Path] = ArtifactKey("model_path", Path)
-    published: ArtifactKey[object] = ArtifactKey("model_path", object)
-    engine = FunctionEngine(
-        _spec("publisher", provides=(declared,)),
-        lambda _context: EngineResult(artifacts={published: "model.cif"}),
-    )
-    context = _context()
-
-    _run(context, engine)
-
-    assert context.failures["publisher"] == (
-        "Engine 'publisher' published artifact 'model_path' under a key of type "
-        "object; it declares type Path"
-    )
-    assert declared not in context.artifacts
 
 
 def test_a_report_value_of_another_type_is_refused_by_its_type() -> None:

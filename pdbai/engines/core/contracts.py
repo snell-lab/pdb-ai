@@ -44,7 +44,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Protocol, get_args, runtime_checkable
+from typing import Any, Literal, Protocol, get_args
 
 import pandas as pd
 import requests
@@ -477,8 +477,8 @@ class EngineSpec:
     this engine, or names target columns that table does not declare.
     """
 
-    # The identifier that dependencies, options.enabled_engines, and
-    # context.failures name the engine by.
+    # The identifier that dependencies and context.failures name the engine
+    # by.
     name: str
     # The name shown to people, as in a warning that the engine failed.
     display_name: str
@@ -513,10 +513,10 @@ class EngineSpec:
     # Whether the engine's failure fails the entry. Without it, a failure is
     # recorded and the entry still completes.
     required: bool = False
-    # The typed values this engine publishes and reads. Every consumed value
-    # must come from the host or from an engine that runs first.
+    # The typed values this engine publishes. An engine that reads one of
+    # them depends on this engine or runs in a later phase, so that it runs
+    # after it.
     provides: tuple[ArtifactKey[Any], ...] = ()
-    consumes: tuple[ArtifactKey[Any], ...] = ()
     # Engines this one needs only under some settings. RABDAM, for one, needs
     # PDB-Redo only when it scores PDB-Redo's model.
     conditional_dependencies: Callable[[EngineOptions], tuple[str, ...]] | None = field(
@@ -606,11 +606,9 @@ class EngineSpec:
     def is_enabled(self, options: EngineOptions) -> bool:
         """Return whether the run switches the engine on itself.
 
-        An engine named in options.enabled_engines is always on. An engine
-        that runs only because another depends on it is not counted here.
+        An engine that runs only because another depends on it is not counted
+        here.
         """
-        if self.name in options.enabled_engines:
-            return True
         if self.enabled_if is not None:
             return self.enabled_if(options)
         if self.toggle is not None:
@@ -819,7 +817,6 @@ class EngineResult:
     source_files: tuple[SourceFile, ...] = ()
 
 
-@runtime_checkable
 class Engine(Protocol):
     """The interface every engine implements."""
 

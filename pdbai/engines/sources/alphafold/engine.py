@@ -59,20 +59,14 @@ from .models import (
 )
 from .references import RCSB_POLYMER_ENTITY_URL
 
-_ANNOTATION_ENGINE_NAME = "alphafold_database"
-
 
 def _uses_afdb(options: EngineOptions) -> bool:
     return options.flag("include_alphafold") or options.flag("include_uniprot")
 
 
 def _fetches_models(options: EngineOptions) -> bool:
-    # The UniProt flag alone asks only for the mapping. Turning the engine on
-    # by name asks for everything it writes, as its own flag does.
-    return (
-        options.flag("include_alphafold")
-        or _ANNOTATION_ENGINE_NAME in options.enabled_engines
-    )
+    # The UniProt flag alone asks only for the mapping.
+    return options.flag("include_alphafold")
 
 
 def _whenever_the_engine_runs(_options: EngineOptions) -> bool:
@@ -185,7 +179,7 @@ class AlphaFoldAnnotationEngine:
     """The engine that maps an entry's AlphaFold lookup onto its residues."""
 
     spec = EngineSpec(
-        name=_ANNOTATION_ENGINE_NAME,
+        name="alphafold_database",
         display_name="AlphaFold Database",
         phase=EnginePhase.ANNOTATION,
         toggle="include_alphafold",

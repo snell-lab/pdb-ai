@@ -70,7 +70,6 @@ class DisulfideEngine:
         # neutron B-factor or the placeholder B of an NMR or EM model, is
         # applied at analysis time from the structures table.
         techniques=None,
-        consumes=(STRUCTURE_CIF_PATH,),
         columns=(DISULFIDE_LINK_COLUMN_SPEC,),
         tables=(DISULFIDES_TABLE,),
         options=(

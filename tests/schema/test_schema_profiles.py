@@ -337,27 +337,6 @@ def _written(engine: str, options: EngineOptions, source: DatasetSource) -> set[
     }
 
 
-@pytest.mark.parametrize("engine", ["rabdam", "alphafold_database"])
-@pytest.mark.parametrize("source", ["download", "upload"])
-def test_an_engine_turned_on_by_name_writes_what_its_flag_would(
-    engine: str, source: DatasetSource
-) -> None:
-    registry = get_engine_registry()
-    flag = registry.get(engine).spec.toggle
-    assert flag is not None
-    by_name = registry.with_defaults(EngineOptions(enabled_engines=frozenset({engine})))
-    by_flag = registry.with_defaults(EngineOptions(values={flag: True}))
-
-    written = _written(engine, by_name, source)
-
-    assert written
-    assert written == _written(engine, by_flag, source)
-    assert schema_fingerprint(by_name, source=source) == schema_fingerprint(
-        by_flag, source=source
-    )
-    assert not _written(engine, registry.with_defaults(EngineOptions()), source)
-
-
 def test_the_uniprot_switch_alone_writes_only_the_mapping() -> None:
     options = EngineOptions(values={"include_uniprot": True})
 

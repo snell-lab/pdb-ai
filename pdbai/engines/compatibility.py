@@ -10,10 +10,9 @@ apply to.
 toggle_compatibility and compatible_toggles tell the web app and the column
 profiles which flags apply to a technique.
 
-Every function checks against the shared engine registry, so an engine
-registered from outside PDB-AI is checked like a built-in one. What applies
-to a technique is read from the engines' declarations rather than listed
-here, so a new engine needs no change to this module.
+Every function checks against the shared engine registry. What applies to a
+technique is read from the engines' declarations rather than listed here, so
+a new engine needs no change to this module.
 """
 
 from __future__ import annotations
@@ -89,12 +88,11 @@ def toggle_compatibility() -> tuple[ToggleCompatibility, ...]:
 
     def applicable(name: str) -> frozenset[str] | None:
         # A refining flag is offered only while the flag it refines is on,
-        # so it is of no use where that flag is ruled out.
+        # so it is of no use where that flag is ruled out. The registry's
+        # validate refuses settings that refine one another in a cycle.
         techniques = supported.get(name)
-        seen = {name}
         refined = refines.get(name)
-        while refined is not None and refined not in seen:
-            seen.add(refined)
+        while refined is not None:
             techniques = _intersect(techniques, supported.get(refined))
             refined = refines.get(refined)
         return techniques
@@ -117,9 +115,10 @@ def technique_conflicts(options: EngineOptions) -> list[str]:
     technique is covered, whatever the dataset source. An engine the run
     switches on through its own toggle is named by that flag, once for all
     the engines of one toggle. Any other engine is named by its own name,
-    such as one switched on in enabled_engines or one that a supported
-    engine depends on. An engine that runs only because unsupported engines
-    depend on it gets no message, since theirs already rule the run out.
+    such as one switched on by a predicate or by default, or one that a
+    supported engine depends on. An engine that runs only because
+    unsupported engines depend on it gets no message, since theirs already
+    rule the run out.
     """
     registry = get_engine_registry()
     technique = get_technique(options.technique)
@@ -135,6 +134,7 @@ def technique_conflicts(options: EngineOptions) -> list[str]:
         if engine.spec.name not in unsupported
         for dependency in engine.spec.dependencies_under(options)
     }
+    labels = {option.name: option.label for option in registry.option_specs()}
     messages: list[str] = []
     reported_toggles: set[str] = set()
 
@@ -152,10 +152,9 @@ def technique_conflicts(options: EngineOptions) -> list[str]:
             if toggle in reported_toggles:
                 continue
             reported_toggles.add(toggle)
-            declared = registry.option_spec(toggle)
-            label = declared.label if declared is not None else spec.display_name
+            # The registry's validate refuses a toggle that no engine declares.
             messages.append(
-                f"{label} ({toggle}) is not available for {technique.label}"
+                f"{labels[toggle]} ({toggle}) is not available for {technique.label}"
             )
         else:
             messages.append(
@@ -164,15 +163,11 @@ def technique_conflicts(options: EngineOptions) -> list[str]:
     return messages
 
 
-def validate_options(
-    options: EngineOptions, *, source: DatasetSource = "download"
-) -> None:
+def validate_options(options: EngineOptions) -> None:
     """Raise ValueError when a run's settings cannot be run as given.
 
     A setting no engine declares is refused, and so is a value its
-    declaration does not allow and an engine name that is not registered.
-    Every artifact an enabled engine reads must come from an engine that runs
-    before it on a dataset from ``source``. The technique is not checked.
+    declaration does not allow. The technique is not checked.
     """
     registry = get_engine_registry()
     declared = {option.name: option for option in registry.option_specs()}
@@ -181,12 +176,6 @@ def validate_options(
         raise ValueError(f"No engine declares the settings {unknown}")
     for name, value in options.values.items():
         declared[name].check(value)
-    unknown_engines = sorted(
-        name for name in options.enabled_engines if name not in registry
-    )
-    if unknown_engines:
-        raise ValueError(f"Unknown engines requested: {unknown_engines}")
-    registry.check_artifacts(options, source)
 
 
 def require_compatible_options(
@@ -195,9 +184,10 @@ def require_compatible_options(
     """Raise ValueError as validate_options does, or for unsupported engines.
 
     The message joins every message technique_conflicts returns for the
-    run.
+    run. ``source`` is the dataset source the run builds from, on which
+    neither check depends at present.
     """
-    validate_options(options, source=source)
+    validate_options(options)
     messages = technique_conflicts(options)
     if messages:
         raise ValueError("; ".join(messages) + ".")

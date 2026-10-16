@@ -22,9 +22,7 @@ registered engine, so a run stores a value for each of them.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Any
 
-from .artifacts import HOST_ARTIFACTS, ArtifactKey
 from .contracts import (
     DatasetSource,
     Engine,
@@ -241,49 +239,6 @@ class EngineRegistry:
         for engine_name in candidates:
             visit(engine_name)
         return ordered
-
-    def check_artifacts(
-        self, options: EngineOptions, source: DatasetSource = "download"
-    ) -> None:
-        """Check that each artifact a run's engines read is produced earlier.
-
-        The run has ``options`` and builds a dataset from ``source``. The
-        host's own artifacts count as produced before any engine runs. An
-        artifact that no earlier engine provides raises ValueError naming the
-        engine that reads it. So does one that an earlier producer provides
-        as a type the reader's key does not accept, that is, a type that is
-        not the key's type or a subclass of it. The check runs before a run
-        starts, rather than failing partway through a structure.
-        """
-        # Every type a name may hold when an engine reads it. A later
-        # producer replaces an earlier one's value only when it succeeds, so
-        # a reader may meet any of them.
-        available: dict[str, list[type[Any]]] = {}
-
-        def provide(keys: Iterable[ArtifactKey[Any]]) -> None:
-            for key in keys:
-                types = available.setdefault(key.name, [])
-                if key.type not in types:
-                    types.append(key.type)
-
-        provide(HOST_ARTIFACTS)
-        for engine in self.engines_to_run(options=options, source=source):
-            spec = engine.spec
-            missing = [key.name for key in spec.consumes if key.name not in available]
-            if missing:
-                raise ValueError(
-                    f"Engine {spec.name!r} reads {missing}, which no engine that "
-                    "runs before it provides"
-                )
-            for key in spec.consumes:
-                for provided in available[key.name]:
-                    if not issubclass(provided, key.type):
-                        raise ValueError(
-                            f"Engine {spec.name!r} reads {key.name!r} as type "
-                            f"{key.type.__name__}, but it is provided as type "
-                            f"{provided.__name__}"
-                        )
-            provide(spec.provides)
 
     def preflight(
         self, options: EngineOptions, source: DatasetSource = "download"

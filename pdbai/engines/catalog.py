@@ -2,9 +2,7 @@
 
 BUILTIN_ENGINES lists each engine PDB-AI ships with, and get_engine_registry
 returns the one registry built from them. Every call returns that same
-object, so code outside PDB-AI adds an engine of its own by registering it
-there. It then calls validate, since registering checks an engine only
-against the engines already registered.
+object.
 
 The registry is built and validated when this module is first imported. So
 a declaration that clashes with another engine's, names an engine or setting

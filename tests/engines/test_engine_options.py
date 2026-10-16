@@ -22,22 +22,6 @@ def _choice() -> OptionSpec:
     )
 
 
-@pytest.mark.parametrize("engines", ["sasa", frozenset({"sasa", 1})])
-def test_enabled_engines_must_be_a_set_of_names(engines: object) -> None:
-    # A single string is refused rather than split into one engine per letter.
-    with pytest.raises(ValueError, match="^enabled_engines must be a set of engine"):
-        EngineOptions(enabled_engines=engines)  # type: ignore[arg-type]
-
-
-def test_enabled_engines_are_copied_into_a_frozenset() -> None:
-    names = {"sasa"}
-
-    options = EngineOptions(enabled_engines=names)  # type: ignore[arg-type]
-    names.add("rabdam")
-
-    assert options.enabled_engines == frozenset({"sasa"})
-
-
 @pytest.mark.parametrize("default", [0, -5, True, 2.0, "3"])
 def test_a_count_setting_refuses_a_default_its_check_would_refuse(
     default: OptionValue,

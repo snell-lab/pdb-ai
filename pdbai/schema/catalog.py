@@ -13,10 +13,9 @@ such as most raw mmCIF items, has no specification, granularity, or
 description here.
 
 The catalog is built on first use. It is rebuilt whenever the registered
-engines change, as when code outside PDB-AI registers an engine or a test
-installs another registry. The check compares each engine declaration by
-identity, not by name. A new registry whose engines reuse the old names is
-therefore still noticed.
+engines change, as when a test installs another registry. The check compares
+each engine declaration by identity, not by name. A new registry whose
+engines reuse the old names is therefore still noticed.
 """
 
 from __future__ import annotations

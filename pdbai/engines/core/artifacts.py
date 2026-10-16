@@ -2,23 +2,21 @@
 
 An engine publishes what later engines read, such as a downloaded file or a
 parsed report, under an ArtifactKey that carries the value's type. The store
-refuses a value of the wrong type when it is published, and it refuses to
-hand a value to a key of another type that shares its name. So a consumer
-gets the type its key promises or nothing. One store belongs to each
-EngineContext and so lives through both phases of one structure.
+refuses a value of the wrong type when it is published, so a reader gets the
+type its key promises or nothing. One store belongs to each EngineContext and
+so lives through both phases of one structure.
 
-Engines declare the keys they provide and consume. Before a run starts, the
-registry checks that each consumed key has a producer that runs earlier, and
-that the key's type accepts every type the host or an earlier producer
-provides under that name. The host counts as the first producer. That check
-is about order and types, not presence. A producer may fail or have nothing
-to publish, so a consumer must treat a missing value as an expected case.
-It can read context.failures to say why the value is missing.
+An engine declares the keys it publishes, and the coordinator refuses any
+other. Nothing declares what an engine reads. An engine that reads another's
+artifact either depends on that engine or runs in a later phase, so that it
+runs after it. A producer may still fail or have nothing to publish, so a reader must treat a missing
+value as an expected case. It can read context.failures to say why the value
+is missing.
 
-The host's own artifacts, in HOST_ARTIFACTS, are the structure file, the
-entry's normalized metadata, and the archive's entry record. The structure
-file is present once acquisition has succeeded. The other two exist only for
-a download, and the record only when it could be fetched.
+The host's own artifacts are the structure file, the entry's normalized
+metadata, and the archive's entry record. The structure file is present once
+acquisition has succeeded. The other two exist only for a download, and the
+record only when it could be fetched.
 """
 
 from __future__ import annotations
@@ -33,8 +31,8 @@ from typing import Any, cast
 class ArtifactKey[T]:
     """The name and type of one value an engine or the host publishes.
 
-    The store and the registry tell keys apart by name alone, so two keys of
-    one name stand for one value. The description is documentation for
+    The store tells keys apart by name alone, so two keys of one name stand
+    for one value. The description is documentation for
     engine authors and is not shown anywhere.
 
     An empty name raises ValueError. So does a type that is not a class,
@@ -67,22 +65,10 @@ class ArtifactStore:
         self._values: dict[str, object] = {}
 
     def get[T](self, key: ArtifactKey[T]) -> T | None:
-        """Return the value published under ``key``, or None when none is.
-
-        A value under the key's name that is not of the key's type raises
-        TypeError, as when a key of another type with that name published
-        it. Returning None would pass the mismatch off as a producer that had
-        nothing to publish.
-        """
-        if key.name not in self._values:
-            return None
-        value = self._values[key.name]
-        if not isinstance(value, key.type):
-            raise TypeError(
-                f"Artifact {key.name!r} holds a {type(value).__name__}, but the "
-                f"key it is read with promises a {key.type.__name__}"
-            )
-        return value
+        """Return the value published under ``key``, or None when none is."""
+        # put checked the value against the key it was published under, which
+        # is this key, since no two keys share a name.
+        return cast(T | None, self._values.get(key.name))
 
     def put[T](self, key: ArtifactKey[T], value: T) -> None:
         """Publish ``value`` under ``key``, replacing any value already there.
@@ -138,15 +124,8 @@ ENTRY_RECORD = ArtifactKey(
     "absent for uploads and when the record could not be fetched.",
 )
 
-HOST_ARTIFACTS: tuple[ArtifactKey[Any], ...] = (
-    STRUCTURE_CIF_PATH,
-    STRUCTURE_METADATA,
-    ENTRY_RECORD,
-)
-
 __all__ = [
     "ENTRY_RECORD",
-    "HOST_ARTIFACTS",
     "STRUCTURE_CIF_PATH",
     "STRUCTURE_METADATA",
     "ArtifactKey",

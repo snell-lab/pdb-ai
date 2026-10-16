@@ -21,9 +21,9 @@ persistence, and reporting.
   everything the rest of the application shows about it.** An `EngineSpec`
   declares its phase, toggle, dependencies, output `ColumnSpec` and `TableSpec`
   records, the settings it reads (`OptionSpec`), the per-structure outcome
-  fields it reports (`ReportField`), the typed artifacts it provides and
-  consumes, the dataset sources it applies to, and optional preflight and
-  reference-data hooks. `run(EngineContext) -> EngineResult` is the single
+  fields it reports (`ReportField`), the typed artifacts it provides, the
+  dataset sources it applies to, and optional preflight and reference-data
+  hooks. `run(EngineContext) -> EngineResult` is the single
   integration point. The command line, the web form and its JSON API, persisted
   settings, technique compatibility, the run report, the run summary, and the
   manifest are all generated from those declarations, so no code outside
@@ -37,9 +37,13 @@ persistence, and reporting.
   publishing the uploaded file. Keys are `ArtifactKey[T]` values that carry
   their type. For a download, the RCSB engine publishes the structure file, and
   the host publishes the entry's metadata and, when it could be fetched, the
-  archive's entry record. `EngineRegistry.check_artifacts` rejects a run in
-  which an enabled engine reads something nothing provides before it runs, or
-  reads it as a type it is not provided as.
+  archive's entry record. An engine publishes only the keys it declares in
+  `provides`, each as a value of the key's type. Nothing declares what an
+  engine reads. An annotation engine reads what acquisition published, and
+  otherwise a reader names its producer in `dependencies` (or
+  `conditional_dependencies`), which is what runs the producer first. A
+  producer may fail or have nothing to publish, so a missing artifact is an
+  expected case for the reader.
 - **Only required engines are fatal.** The mandatory RCSB download is
   `required`. Any other engine that raises is recorded, and the structure still
   completes. Its enabled columns are left empty, its tables header-only, and its
@@ -74,8 +78,8 @@ anywhere is admitted as unverified rather than refused. Every `EngineSpec`
 declares the techniques its science applies to (`techniques=None` means all),
 and `pdbai/engines/compatibility.py` rejects, before any work starts, a run that
 would execute an engine for a technique it does not support. That covers an
-engine switched on by its flag or by name in `enabled_engines`, and an
-unsupported dependency of a supported engine. Within X-ray diffraction,
+engine switched on by its flag, and an unsupported dependency of a supported
+engine. Within X-ray diffraction,
 `EngineOptions.xray_source` is a second-level intake filter on the reported
 radiation source (how XFEL entries are distinguished, since the PDB files them
 as X-ray diffraction). It normalizes deposited spellings and refuses entries
@@ -184,25 +188,25 @@ filter on. They are not techniques.
 
 ## Adding an engine
 
-Code outside PDB-AI can register another engine without changing any other code.
-Implement `spec` plus `run(context)`, register the object with
-`pdbai.engines.get_engine_registry().register(...)`, then call `.validate()` on
-that registry. `register` checks only that the engine's name, columns, tables,
-settings, and report fields clash with no other engine's. `validate` checks that
-toggles and settings name declared flags, that no settings refine one another in
-a cycle, that dependencies exist and run in the same or an earlier phase, and
-that no dependencies form a cycle. Only annotation engines may declare columns
-or tables. Turn the engine on through its own declared flag or by name in
-`EngineOptions(enabled_engines=frozenset({...}))`. The core names no engine.
-Every engine's settings, built-in or not, live in `EngineOptions.values` keyed
-by the names their `OptionSpec`s declare, and a build fills any left out with
-their declared defaults. The engine's declared columns then participate in
-enablement, ordering, documentation, filtering, and star-schema placement. Its
-tables are written, assembled, and described in the manifest and run summary.
-Its settings appear as command-line flags and web form controls, and its report
-fields appear in the run report, the manifest, and the run summary.
-`tests/integration/test_third_party_engine.py` installs a registry holding such
-an engine and runs it end to end.
+A new engine is a package under `pdbai/engines/sources/` or
+`pdbai/engines/analyses/` whose `engine.py` implements `spec` plus
+`run(context)`, and one line adding it to `BUILTIN_ENGINES` in
+`pdbai/engines/catalog.py`. The catalog's registry is built and validated when
+it is first imported. Registering checks that the engine's name, columns,
+tables, settings, and report fields clash with no other engine's. Validating
+checks that toggles and settings name declared flags, that no settings refine
+one another in a cycle, that dependencies exist and run in the same or an
+earlier phase, and that no dependencies form a cycle. Only annotation engines
+may declare columns or tables. The engine is turned on through its own declared
+flag. The core names no engine. Every engine's settings live in
+`EngineOptions.values` keyed by the names their `OptionSpec`s declare, and a
+build fills any left out with their declared defaults. The engine's declared
+columns then participate in enablement, ordering, documentation, filtering, and
+star-schema placement. Its tables are written, assembled, and described in the
+manifest and run summary. Its settings appear as command-line flags and web form
+controls, and its report fields appear in the run report, the manifest, and the
+run summary. `tests/integration/test_stub_engine.py` installs a registry holding
+a stub engine pair that nothing else names and runs it end to end.
 
 ## Project structure
 

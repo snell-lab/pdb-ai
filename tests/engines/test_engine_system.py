@@ -108,12 +108,9 @@ def _context(options: EngineOptions | None = None) -> EngineContext:
 def test_registry_orders_dependencies_before_consumers() -> None:
     calls: list[str] = []
     dependency = StubEngine(_spec("source", default_enabled=False), calls=calls)
-    consumer = StubEngine(
-        _spec("consumer", dependencies=("source",), default_enabled=False),
-        calls=calls,
-    )
+    consumer = StubEngine(_spec("consumer", dependencies=("source",)), calls=calls)
     registry = EngineRegistry([consumer, dependency])
-    options = EngineOptions(enabled_engines=frozenset({"consumer"}))
+    options = EngineOptions()
 
     ordered = registry.engines_to_run(phase=EnginePhase.ANNOTATION, options=options)
 
@@ -128,15 +125,9 @@ def test_registry_includes_cross_phase_dependencies_in_their_phase() -> None:
             default_enabled=False,
         )
     )
-    consumer = StubEngine(
-        _spec(
-            "consumer",
-            dependencies=("source",),
-            default_enabled=False,
-        )
-    )
+    consumer = StubEngine(_spec("consumer", dependencies=("source",)))
     registry = EngineRegistry([consumer, source])
-    options = EngineOptions(enabled_engines=frozenset({"consumer"}))
+    options = EngineOptions()
 
     acquisition = registry.engines_to_run(
         phase=EnginePhase.ACQUISITION, options=options
@@ -241,65 +232,6 @@ def test_registry_validation_refuses_options_that_refine_one_another(
         ValueError, match=f"Options refine one another in a cycle: {cycle}"
     ):
         EngineRegistry([StubEngine(spec)]).validate()
-
-
-def _reader(
-    consumed: ArtifactKey[object], *, dependencies: tuple[str, ...] = ()
-) -> StubEngine:
-    return StubEngine(
-        EngineSpec(
-            name="reader",
-            display_name="Reader",
-            phase=EnginePhase.ANNOTATION,
-            default_enabled=True,
-            dependencies=dependencies,
-            consumes=(consumed,),
-        )
-    )
-
-
-def test_artifact_check_refuses_an_artifact_produced_too_late() -> None:
-    count: ArtifactKey[object] = ArtifactKey("count", int)
-    producer = StubEngine(_spec("producer", provides=(count,)))
-
-    # Nothing orders the producer first, so it runs after the reader.
-    with pytest.raises(
-        ValueError,
-        match=r"Engine 'reader' reads \['count'\], which no engine that runs "
-        "before it provides",
-    ):
-        EngineRegistry([_reader(count), producer]).check_artifacts(EngineOptions())
-
-    EngineRegistry(
-        [_reader(count, dependencies=("producer",)), producer]
-    ).check_artifacts(EngineOptions())
-
-
-def test_artifact_check_refuses_a_reader_whose_key_type_does_not_fit() -> None:
-    provided: ArtifactKey[object] = ArtifactKey("count", bool)
-    producer = StubEngine(_spec("producer", provides=(provided,)))
-    as_text: ArtifactKey[object] = ArtifactKey("count", str)
-    as_number: ArtifactKey[object] = ArtifactKey("count", int)
-    # The host publishes the structure file as a Path.
-    host_file_as_text: ArtifactKey[object] = ArtifactKey("structure_cif_path", str)
-
-    with pytest.raises(
-        ValueError,
-        match="Engine 'reader' reads 'count' as type str, but it is provided as "
-        "type bool",
-    ):
-        EngineRegistry(
-            [producer, _reader(as_text, dependencies=("producer",))]
-        ).check_artifacts(EngineOptions())
-    with pytest.raises(
-        ValueError, match="reads 'structure_cif_path' as type str, but it is "
-    ):
-        EngineRegistry([_reader(host_file_as_text)]).check_artifacts(EngineOptions())
-
-    # A bool is an int, so a reader of int accepts what the producer publishes.
-    EngineRegistry(
-        [producer, _reader(as_number, dependencies=("producer",))]
-    ).check_artifacts(EngineOptions())
 
 
 def test_coordinator_merges_declared_columns_and_collects_result_metadata() -> None:
@@ -706,8 +638,6 @@ def test_engine_options_reject_values_outside_their_choices() -> None:
 def test_settings_no_engine_declares_are_rejected() -> None:
     with pytest.raises(ValueError, match="No engine declares the settings"):
         validate_options(EngineOptions(values={"include_typo": True}))
-    with pytest.raises(ValueError, match="Unknown engines requested"):
-        validate_options(EngineOptions(enabled_engines=frozenset({"nope"})))
 
 
 def test_engine_options_reject_unusable_manifest_values() -> None:
@@ -729,10 +659,6 @@ def test_engine_options_reject_wrong_typed_manifest_settings() -> None:
 
     with pytest.raises(TypeError, match="must be a string"):
         EngineOptions.from_settings_dict(stored(technique=1))
-    with pytest.raises(TypeError, match="must be a list of names"):
-        EngineOptions.from_settings_dict(stored(enabled_engines="rabdam"))
-    with pytest.raises(TypeError, match="must be a list of names"):
-        EngineOptions.from_settings_dict(stored(enabled_engines=[1]))
     with pytest.raises(TypeError, match="'engine_settings' must be an object"):
         EngineOptions.from_settings_dict(stored(engine_settings=["include_sasa"]))
     with pytest.raises(TypeError, match="is not a plain value"):
@@ -752,7 +678,6 @@ def test_engine_options_reject_wrong_typed_manifest_settings() -> None:
 def test_engine_options_survive_a_json_manifest_round_trip() -> None:
     options = EngineOptions(
         dataset_shape="star_schema",
-        enabled_engines=frozenset({"custom"}),
         values={"include_sasa": True, "sasa_n_sphere_points": 250},
     )
 
@@ -767,13 +692,20 @@ def test_engine_options_survive_a_json_manifest_round_trip() -> None:
 def test_engine_options_round_trip_through_manifest_settings() -> None:
     options = EngineOptions(
         dataset_shape="star_schema",
-        enabled_engines=frozenset({"custom", "another"}),
         values={"include_rabdam": False, "include_sasa": True},
     )
 
     restored = EngineOptions.from_settings_dict(options.as_settings_dict())
 
     assert restored == options
+
+
+def test_engine_options_ignore_the_engine_list_of_older_manifests() -> None:
+    # Runs stored while options could switch engines on by name list them.
+    settings = EngineOptions().as_settings_dict()
+    settings["enabled_engines"] = ["rabdam", 1]
+
+    assert EngineOptions.from_settings_dict(settings) == EngineOptions()
 
 
 def test_engine_options_reject_incomplete_manifest_settings() -> None:

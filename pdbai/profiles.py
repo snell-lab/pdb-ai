@@ -317,7 +317,7 @@ def resolve_run_settings(
     ValueError is raised for an unknown technique, X-ray source, dataset
     shape, or profile. It is also raised for an undeclared setting or an
     invalid value. It is raised too for an enabled engine the technique does
-    not support, or one whose inputs no other enabled engine provides.
+    not support.
     """
     options = get_engine_registry().with_defaults(
         EngineOptions(

@@ -109,7 +109,7 @@ it.
   available engine at once. Captions explain fetches that a toggle combination
   performs internally (for example, RABDAM with its default source fetches
   PDB-Redo's mmCIF, while AlphaFold Database performs entity-aware UniProt
-  mapping). An engine that code outside PDB-AI registers appears here too.
+  mapping).
 - **Column profiles.** Choose a pre-defined column preset from the dropdown. A
   profile switches on the engines its columns need (except those the technique
   rules out) and leaves every other switch as it is, and it fills in its column

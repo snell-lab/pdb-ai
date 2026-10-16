@@ -248,8 +248,7 @@ def _write_bridge_quality_columns(
 
 def _scores(options: EngineOptions, sources: set[str]) -> bool:
     # Only rabdam_source is read, never include_rabdam. Whether the engine
-    # runs is decided elsewhere. An engine turned on by name therefore scores
-    # the same sources as one turned on by its flag.
+    # runs is decided elsewhere.
     return options.choice("rabdam_source") in sources
 
 
@@ -383,7 +382,6 @@ class RabdamEngine:
         toggle="include_rabdam",
         conditional_dependencies=_pdb_redo_dependency,
         conditional_dependency_names=("pdb_redo_structure",),
-        consumes=(STRUCTURE_CIF_PATH,),
         # There is no other BDamage implementation, so a missing package
         # stops the run before it starts instead of failing every structure.
         preflight=check_installed,

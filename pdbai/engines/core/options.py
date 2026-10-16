@@ -21,7 +21,7 @@ table's name.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Literal, cast
 
@@ -86,18 +86,15 @@ class EngineOptions:
     """The settings of one run, the engines' included.
 
     An unknown dataset shape, technique, or X-ray source raises ValueError, and
-    so does an X-ray source under any technique but X-ray diffraction. So do
-    enabled engines given as one string, or holding a name that is not a
-    string. Engine settings live in ``values``, keyed by the option names the
-    engines declare, and are not checked here. validate_options in
+    so does an X-ray source under any technique but X-ray diffraction. Engine
+    settings live in ``values``, keyed by the option names the engines
+    declare, and are not checked here. validate_options in
     pdbai.engines.compatibility checks them against the declarations.
     EngineRegistry.with_defaults fills in the declared default of each one a
     run leaves out.
     """
 
     dataset_shape: DatasetShapeName = DEFAULT_DATASET_SHAPE
-    # Engines switched on by name, whatever their own flags say.
-    enabled_engines: frozenset[str] = frozenset()
     # Intake refuses an entry of any other technique, and a run that enables an
     # engine for a technique it does not support is refused before it starts.
     technique: str = DEFAULT_TECHNIQUE
@@ -110,7 +107,7 @@ class EngineOptions:
     )
 
     def __post_init__(self) -> None:
-        """Check the run-level settings and copy the caller's collections."""
+        """Check the run-level settings and copy the caller's values."""
         parse_dataset_shape(self.dataset_shape)
         technique = get_technique(self.technique)
         if self.xray_source != ALL_XRAY_SOURCES:
@@ -120,21 +117,9 @@ class EngineOptions:
                     f"xray_source {source.id!r} applies only to technique "
                     f"'{XRAY_SOURCE_TECHNIQUE}'; got technique {technique.id!r}"
                 )
-        # A string is iterable, so without this check "sasa" would enable the
-        # engines named "s" and "a". The names are checked at run time, since
-        # a caller's set may not be type-checked.
-        engine_names = cast(object, self.enabled_engines)
-        if isinstance(engine_names, str) or not all(
-            isinstance(name, str) for name in cast(Iterable[object], engine_names)
-        ):
-            raise ValueError(
-                "enabled_engines must be a set of engine names; "
-                f"got {self.enabled_engines!r}"
-            )
-        # Copies, so that a mapping or set the caller changes later cannot
-        # change options that are meant to be frozen.
+        # A copy, so that a mapping the caller changes later cannot change
+        # options that are meant to be frozen.
         object.__setattr__(self, "values", dict(self.values))
-        object.__setattr__(self, "enabled_engines", frozenset(self.enabled_engines))
 
     def value(self, name: str) -> OptionValue:
         """Return an engine setting by name, or None when it is unset."""
@@ -176,12 +161,15 @@ class EngineOptions:
     def as_settings_dict(self) -> dict[str, object]:
         """Return these options as the JSON object a manifest stores.
 
-        Engines and settings are sorted, so equal options give equal objects
-        and so the same settings hash.
+        Settings are sorted, so equal options give equal objects and so the
+        same settings hash.
         """
         return {
             "dataset_shape": self.dataset_shape,
-            "enabled_engines": sorted(self.enabled_engines),
+            # Left from a removed option that switched engines on by name. It
+            # is always empty, and is still written so that runs stored while
+            # it was an option keep their settings hash and can be resumed.
+            "enabled_engines": [],
             "technique": self.technique,
             "xray_source": self.xray_source,
             "engine_settings": dict(sorted(self.values.items())),
@@ -194,9 +182,10 @@ class EngineOptions:
         The object may come from a file anyone could have edited, so nothing
         in it is coerced. A missing key raises ValueError, and so does a value
         the constructor refuses. A run-level value that is not a string raises
-        TypeError. So does an engine list that is not a list of names. So does
-        an engine setting that is not a Boolean, a string, an integer, or None.
-        Keys it does not know are ignored. Engine settings are not checked
+        TypeError. So does an engine setting that is not a Boolean, a string,
+        an integer, or None. Keys it does not know are ignored. Whatever the
+        engine list holds is ignored too, so that a run stored while the list
+        could name engines still lists. Engine settings are not checked
         against their declarations, which is the job of validate_options.
         """
         missing = sorted(cls().as_settings_dict().keys() - settings.keys())
@@ -204,11 +193,6 @@ class EngineOptions:
             raise ValueError(
                 "Engine settings are incomplete; missing: " + ", ".join(missing)
             )
-        engine_names = settings["enabled_engines"]
-        if not isinstance(engine_names, list) or not all(
-            isinstance(item, str) for item in cast(list[object], engine_names)
-        ):
-            raise TypeError("Engine setting 'enabled_engines' must be a list of names")
         raw_values = settings["engine_settings"]
         if not isinstance(raw_values, Mapping):
             raise TypeError("Engine setting 'engine_settings' must be an object")
@@ -223,7 +207,6 @@ class EngineOptions:
             dataset_shape=parse_dataset_shape(_text_setting(settings, "dataset_shape")),
             technique=_text_setting(settings, "technique"),
             xray_source=_text_setting(settings, "xray_source"),
-            enabled_engines=frozenset(cast(list[str], engine_names)),
             values=values,
         )
 

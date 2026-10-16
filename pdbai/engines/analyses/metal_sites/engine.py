@@ -67,7 +67,6 @@ class MetalSiteEngine:
         # the same code. What a value means for one technique is applied at
         # analysis time from the structures table.
         techniques=None,
-        consumes=(STRUCTURE_CIF_PATH,),
         columns=(METAL_LINK_COLUMN_SPEC,),
         tables=(METAL_SITES_TABLE, METAL_BONDS_TABLE, METAL_PAIRS_TABLE),
         reference_data=reference_receipts,

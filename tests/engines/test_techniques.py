@@ -303,7 +303,7 @@ class _StubEngine:
         return EngineResult(columns=pd.DataFrame(index=context.atom_dataframe.index))
 
 
-def test_technique_conflicts_report_custom_engines_by_name(
+def test_technique_conflicts_report_an_engine_without_a_toggle_by_name(
     install_engines: Callable[..., None],
 ) -> None:
     install_engines(
@@ -312,13 +312,12 @@ def test_technique_conflicts_report_custom_engines_by_name(
                 name="em_only",
                 display_name="EM only",
                 phase=EnginePhase.ANNOTATION,
+                default_enabled=True,
                 techniques=frozenset({"electron_microscopy"}),
             )
         )
     )
-    options = EngineOptions(
-        enabled_engines=frozenset({"em_only"}), values={"include_rabdam": False}
-    )
+    options = EngineOptions(values={"include_rabdam": False})
 
     assert technique_conflicts(options) == [
         "Engine 'em_only' is not available for X-ray diffraction"
@@ -326,31 +325,11 @@ def test_technique_conflicts_report_custom_engines_by_name(
     assert (
         technique_conflicts(
             EngineOptions(
-                technique="electron_microscopy",
-                enabled_engines=frozenset({"em_only"}),
-                values={"include_rabdam": False},
+                technique="electron_microscopy", values={"include_rabdam": False}
             )
         )
         == []
     )
-
-
-def test_an_engine_switched_on_by_name_is_refused_outside_its_technique() -> None:
-    # Its own flag is off, so only its name in enabled_engines runs it. The
-    # PDB-Redo engines it pulls in are covered by the message about RABDAM.
-    options = get_engine_registry().with_defaults(
-        EngineOptions(
-            technique="electron_microscopy",
-            enabled_engines=frozenset({"rabdam"}),
-            values={"include_rabdam": False},
-        )
-    )
-
-    assert technique_conflicts(options) == [
-        "Engine 'rabdam' is not available for Cryogenic electron microscopy"
-    ]
-    with pytest.raises(ValueError, match="Engine 'rabdam' is not available"):
-        require_compatible_options(options)
 
 
 def _flag(name: str, *, refines: str | None = None) -> OptionSpec:

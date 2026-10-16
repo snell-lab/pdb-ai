@@ -8,9 +8,8 @@ then hands them to build_atom_site_dataset and builds nothing itself. With
 to the build with them, so the manifest records where the cohort came from.
 
 The engine flags are not written by hand. Each setting the engine registry
-declares gets a generated flag with the engine's own help text. So an engine
-that code outside PDB-AI registers appears on the command line with no
-change here.
+declares gets a generated flag with the engine's own help text. So a new
+engine appears on the command line with no change here.
 
 Progress and the run summary go to standard output. Log messages go to
 standard error.

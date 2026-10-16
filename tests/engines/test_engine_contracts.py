@@ -76,23 +76,6 @@ def test_the_store_refuses_a_value_of_the_wrong_type_and_keeps_the_old_one() -> 
     assert store.get(PATH_KEY) == Path("kept.cif")
 
 
-def test_the_store_refuses_a_value_read_with_a_key_of_another_type() -> None:
-    # The registry matches keys by name, so a consumer that declares the
-    # name with the wrong type passes its check. Reading must not then look
-    # like a producer that had nothing to publish.
-    store = ArtifactStore()
-    store.put(PATH_KEY, Path("1abc.cif"))
-
-    with pytest.raises(
-        TypeError,
-        match=(
-            "Artifact 'structure_file' holds a PosixPath, but the key it is read "
-            "with promises a str"
-        ),
-    ):
-        store.get(ArtifactKey("structure_file", str))
-
-
 def test_the_store_publishes_several_values_until_one_has_the_wrong_type() -> None:
     count = ArtifactKey("count", int)
     label = ArtifactKey("label", str)

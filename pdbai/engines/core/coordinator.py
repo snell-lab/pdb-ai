@@ -132,8 +132,9 @@ def _validated_report(spec: EngineSpec, result: EngineResult) -> dict[str, Repor
             f"Engine {spec.name!r} reported undeclared fields: {undeclared}"
         )
     for name, value in result.report.items():
-        # Checked at run time, since an engine from outside PDB-AI may not be
-        # type-checked.
+        # Checked at run time, since a value read out of pandas is often typed
+        # loosely enough to pass the type checkers while being a numpy scalar,
+        # such as a numpy.int64, which is not a Python int.
         raw = cast(object, value)
         if raw is not None and not isinstance(raw, (bool, int, float, str)):
             raise ValueError(
@@ -145,7 +146,7 @@ def _validated_report(spec: EngineSpec, result: EngineResult) -> dict[str, Repor
 
 
 def _check_result_artifacts(spec: EngineSpec, result: EngineResult) -> None:
-    declared = {key.name: key for key in spec.provides}
+    declared = {key.name for key in spec.provides}
     undeclared = sorted(
         key.name for key in result.artifacts if key.name not in declared
     )
@@ -153,16 +154,6 @@ def _check_result_artifacts(spec: EngineSpec, result: EngineResult) -> None:
         raise ValueError(
             f"Engine {spec.name!r} published undeclared artifacts: {undeclared}"
         )
-    for key in result.artifacts:
-        # The store finds a value by its key's name. Under a key of another
-        # type, a value of the wrong type could be published, and a consumer
-        # reading it with the declared key would get a TypeError, not a value.
-        if key.type is not declared[key.name].type:
-            raise ValueError(
-                f"Engine {spec.name!r} published artifact {key.name!r} under a "
-                f"key of type {key.type.__name__}; it declares type "
-                f"{declared[key.name].type.__name__}"
-            )
     # The store checks each type as it publishes, but by then the columns
     # are merged and earlier artifacts are published.
     for key, value in result.artifacts.items():
