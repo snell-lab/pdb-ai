@@ -24,8 +24,10 @@ Every enrichment engine feeds into the same fully-computed atom frame.
     SASA/RASA contexts, eligibility masks, B-factor statistics, AlphaFold
     Database provenance/pLDDT, …), keyed by `residue_key`, with a `chain_key`
     foreign key.
-  - The chains table: columns constant within a chain, keyed by `chain_key`. No
-    built-in column is chain-level yet, so it holds only each chain's identity.
+  - The chains table: columns constant within a chain, keyed by `chain_key`: each
+    chain's identity and, with `--include-uniprot`, the RCSB sequence-cluster
+    identifiers of its polymer entity (`sequence_cluster_30` through
+    `sequence_cluster_100`).
   - The structures table: scientific/experimental columns constant for the whole
     structure (resolution, r_work, bnet_pdb_redo, radiation/beam conditions,
     crystallographic quality, …), keyed by `pdb_id`.
