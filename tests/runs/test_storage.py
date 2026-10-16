@@ -8,6 +8,7 @@ from pdbai.runs import RunDirectory, validate_output_filename, validate_run_id
 from pdbai.runs.storage import (
     deletion_name,
     output_file_path,
+    run_id_refusal,
     runs_root,
     settings_hash,
 )
@@ -105,6 +106,25 @@ def test_a_symlinked_runs_directory_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="symbolic link"):
         runs_root(workspace)
+
+
+def test_a_build_may_take_a_run_id_only_as_its_resume_flag_allows(
+    tmp_path: Path,
+) -> None:
+    runs = tmp_path / "runs"
+    (runs / "existing").mkdir(parents=True)
+    # A file in a run's place is something a new run would build over, and
+    # not a run that can be resumed.
+    (runs / "file").write_text("", encoding="utf-8")
+
+    assert run_id_refusal(tmp_path, "new", resume=False) is None
+    assert run_id_refusal(tmp_path, "new", resume=True) == "missing"
+    assert run_id_refusal(tmp_path, "existing", resume=False) == "exists"
+    assert run_id_refusal(tmp_path, "existing", resume=True) is None
+    assert run_id_refusal(tmp_path, "file", resume=False) == "exists"
+    assert run_id_refusal(tmp_path, "file", resume=True) == "missing"
+    with pytest.raises(ValueError, match="Run ID"):
+        run_id_refusal(tmp_path, "../escape", resume=False)
 
 
 def test_each_table_has_its_own_folder_of_partials(tmp_path: Path) -> None:

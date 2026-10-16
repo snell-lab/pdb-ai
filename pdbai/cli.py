@@ -52,10 +52,10 @@ from .results import DatasetBuildResult, NoDatasetError, PdbProcessResult
 from .runs import (
     RunLockedError,
     RunNotResumableError,
-    open_run,
     validate_output_filename,
     validate_run_id,
 )
+from .runs.storage import run_id_refusal
 from .selection import ArchiveSearchError, Selection, SelectionResult, search_archive
 from .selection_filters import SEARCH_FILTERS, UNIPROT_ACCESSIONS
 
@@ -385,23 +385,16 @@ def _run_settings(args: argparse.Namespace) -> RunSettings:
     )
 
 
-def parse_args(
-    argv: Sequence[str] | None = None,
+def _parse_args(
+    parser: argparse.ArgumentParser, argv: Sequence[str] | None
 ) -> tuple[argparse.Namespace, RunSettings]:
-    """Parse the command line and resolve the run's settings.
+    """Parse argv with ``parser`` and resolve the run's settings.
 
     A malformed PDB identifier is a usage error. So are flags that conflict,
     a setting that refines an engine the run leaves off, and settings that
     the technique or the profile rules out. Each one exits through argparse
     with status 2, before anything is searched or downloaded.
     """
-    return _parse_args(_build_parser(), argv)
-
-
-def _parse_args(
-    parser: argparse.ArgumentParser, argv: Sequence[str] | None
-) -> tuple[argparse.Namespace, RunSettings]:
-    """Parse argv with ``parser``, as parse_args describes."""
     args = parser.parse_args(argv)
     if args.select and args.pdb_ids:
         parser.error("give either PDB identifiers or --select, not both")
@@ -457,20 +450,19 @@ def _run_id_problem(args: argparse.Namespace) -> str | None:
     """Return why --run-id cannot be built as asked, or None when it can.
 
     --resume needs the run to exist, and a run ID without --resume must not
-    name one, so a mistyped ID neither starts a new run nor builds over a
-    finished one. The web app refuses the same requests.
+    name one. run_id_refusal holds this rule, which the web app applies too.
     """
     if args.run_id is None:
         return None
     try:
-        exists = open_run(args.workdir, args.run_id).directory.root.exists()
+        refusal = run_id_refusal(args.workdir, args.run_id, resume=args.resume)
     except ValueError as exception:
         return str(exception)
-    if args.resume and not exists:
+    if refusal == "missing":
         return (
             f"run {args.run_id!r} does not exist in {args.workdir}; nothing to resume"
         )
-    if not args.resume and exists:
+    if refusal == "exists":
         return (
             f"run {args.run_id!r} already exists in {args.workdir}; "
             "pass --resume to continue it or choose another --run-id"

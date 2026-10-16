@@ -21,6 +21,7 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from ..atomic import SCRATCH_NAME_EXTRA_BYTES
 
@@ -191,6 +192,25 @@ def run_directory_path(working_directory: Path, run_id: str) -> Path:
     return _resolved_child_path(runs_root(working_directory), validated, label="Run ID")
 
 
+def run_id_refusal(
+    working_directory: Path, run_id: str, *, resume: bool
+) -> Literal["missing", "exists"] | None:
+    """Return why a build may not take ``run_id``, or None when it may.
+
+    A resume needs the run, so it is refused as "missing" when no run
+    directory is there. A build without resume must not name an existing run,
+    so it is refused as "exists" when anything is at the run's path. A
+    mistyped ID then neither starts a new run nor builds over a finished one.
+    The command line and the web app both apply this rule, each in its own
+    words. An invalid ``run_id`` raises ValueError, as does a run directory
+    or runs directory that is a symbolic link.
+    """
+    path = run_directory_path(working_directory, run_id)
+    if resume:
+        return None if path.is_dir() else "missing"
+    return "exists" if path.exists() else None
+
+
 def output_file_path(working_directory: Path, output_filename: str) -> Path:
     """Return the path of a published table, directly in the working directory.
 
@@ -306,6 +326,7 @@ __all__ = [
     "new_run_id",
     "output_file_path",
     "run_directory_path",
+    "run_id_refusal",
     "runs_root",
     "settings_hash",
     "validate_output_filename",

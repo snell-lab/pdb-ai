@@ -318,9 +318,11 @@ and every one but pause answers an ID that names no run directory with `404`
   `additionalCsvUrls` (table name to link), `runReportUrl`, and `runSummaryUrl`,
   the download links, beside `summary` (`pdbCount` entries in the dataset,
   `requestedCount` entries the run names, `atomCount`, `columnCount`),
-  `warnings`, `preview`, and `columnFilter`. `error` is the build's own message,
-  which may name local paths as the manifest does. `404` when neither the
-  manifest nor `job.json` records a status.
+  `warnings`, `preview`, and `columnFilter`. Each link carries the path prefix
+  the app was served under (its `SCRIPT_NAME`, as behind a proxy that mounts it
+  under a path) when the request that started the build came in. `error` is the
+  build's own message, which may name local paths as the manifest does. `404`
+  when neither the manifest nor `job.json` records a status.
 - `GET /api/runs` returns `{"runs": [...]}`, the most recently changed first,
   each with `runId`, `status`, `createdAt` and `updatedAt` (Unix seconds),
   `settings`, `pdbCount`, `selection`, `counts` (`done`, `failed`, `refused`,

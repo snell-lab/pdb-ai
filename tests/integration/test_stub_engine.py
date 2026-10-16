@@ -157,7 +157,8 @@ def test_a_failing_optional_engine_does_not_lose_the_structure(
 def test_the_command_line_and_web_form_offer_the_engine_setting(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    args, _ = cli.parse_args(["1ABC", "--include-stub", "--stub-scale", "3"])
+    parser = cli._build_parser()  # pyright: ignore[reportPrivateUsage]
+    args = parser.parse_args(["1ABC", "--include-stub", "--stub-scale", "3"])
     assert (args.include_stub, args.stub_scale) == (True, 3)
 
     monkeypatch.chdir(tmp_path)

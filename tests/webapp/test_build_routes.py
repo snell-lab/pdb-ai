@@ -9,6 +9,7 @@ from pytest import MonkeyPatch, mark
 from werkzeug.test import TestResponse
 
 from pdbai.engines.core import EngineOptions
+from pdbai.results import DatasetBuildResult
 from pdbai.runs import open_run
 from pdbai.selection import Selection, SelectionResult
 from pdbai.webapp import create_app, jobs
@@ -310,6 +311,50 @@ def test_build_route_accepts_thousands_of_ids_without_a_cap(
     run_id = cast(str, cast(Mapping[str, Any], response.get_json())["runId"])
     _wait_for_job(_service(app), run_id)
     assert received == [pdb_ids]
+
+
+def test_result_links_follow_the_prefix_the_app_is_served_under(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    run_directory = open_run(tmp_path / "workspace", "mounted").directory
+
+    def fake_build(**kwargs: object) -> DatasetBuildResult:
+        return DatasetBuildResult(
+            csv_path=run_directory.dataset_path_for("atoms"),
+            additional_csv_paths={"chains": run_directory.dataset_path_for("chains")},
+            run_report_path=run_directory.report_path,
+            run_summary_path=run_directory.summary_path,
+            atom_count=1,
+            column_count=1,
+            pdb_ids=cast(list[str], kwargs["pdb_ids"]),
+            preview_rows=[],
+            warnings=[],
+        )
+
+    monkeypatch.setattr(jobs, "build_atom_site_dataset", fake_build)
+    app = create_app()
+    app.testing = True
+    client = app.test_client()
+    # A proxy that serves the app under /pdbai passes that prefix as
+    # SCRIPT_NAME, and the test client does the same for this base URL.
+    mounted = "http://localhost/pdbai"
+
+    started = client.post(
+        "/api/build", json={"pdbIds": ["1ABC"], "runId": "mounted"}, base_url=mounted
+    )
+    assert started.status_code == 200
+    _wait_for_job(_service(app), "mounted")
+    status = client.get("/api/runs/mounted/status", base_url=mounted).get_json()
+
+    result = cast(Mapping[str, Any], status)["result"]
+    files = "/pdbai/api/runs/mounted/files"
+    assert result["csvUrl"] == f"{files}/{run_directory.dataset_path_for('atoms').name}"
+    assert result["additionalCsvUrls"] == {
+        "chains": f"{files}/{run_directory.dataset_path_for('chains').name}"
+    }
+    assert result["runReportUrl"] == f"{files}/run_report.csv"
+    assert result["runSummaryUrl"] == f"{files}/run_summary.md"
 
 
 def test_build_route_answers_with_the_run_id_and_passes_run_id_and_resume_on(

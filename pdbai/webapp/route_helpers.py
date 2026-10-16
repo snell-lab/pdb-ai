@@ -28,6 +28,7 @@ from werkzeug.exceptions import BadRequest
 from ..engines.core import camel_case
 from ..json_values import optional_object_dict
 from ..runs import RunState, new_run_id, open_run, validate_run_id
+from ..runs.storage import run_id_refusal
 
 # A download link the page has just shown must still work when the user clicks
 # it, so a file is kept for an hour after it was last written. An hour is far
@@ -134,25 +135,33 @@ def run_id_to_build(
     so a new ID is returned, and with ``resume`` the request aborts with 400.
     Any other value must be a valid run ID string, or the request aborts with
     400, so 0, false, or [] is refused rather than replaced with a new ID.
-    Resuming a run that does not exist aborts with 404, and resuming a run
-    that is_held reports as held aborts with 409. A runId that names an
-    existing run without ``resume`` aborts with 409, so a finished run is
-    never built over by accident.
+    The rest is the rule run_id_refusal holds. Resuming a run that does not
+    exist aborts with 404, as does a run or runs directory that is a symbolic
+    link, and resuming a run that is_held reports as held aborts with 409. A
+    runId that names an existing run without ``resume`` aborts with 409, so a
+    finished run is never built over by accident.
     """
     if raw_run_id is None or raw_run_id == "":
         if resume:
             bad_request("resume requires a runId naming the run to resume.")
         return new_run_id()
     run_id = validated_run_id(raw_run_id)
-    if resume:
-        existing_run(working_directory, run_id)
-        if is_held(run_id):
-            refuse_run_in_use(run_id)
-    elif open_run(working_directory, run_id).directory.root.exists():
+    try:
+        refusal = run_id_refusal(working_directory, run_id, resume=resume)
+    except ValueError as exception:
+        # The ID is valid, so only a symbolic link can be refused here, as in
+        # existing_run.
+        current_app.logger.warning("Run %r refused: %s", run_id, exception)
+        abort(404, RUN_NOT_FOUND)
+    if refusal == "missing":
+        abort(404, RUN_NOT_FOUND)
+    if refusal == "exists":
         abort(
             409,
             f"Run {run_id!r} already exists; resume it or choose another run ID.",
         )
+    if resume and is_held(run_id):
+        refuse_run_in_use(run_id)
     return run_id
 
 

@@ -48,7 +48,7 @@ from ..column_filtering import (
 from ..orchestration.upload import portable_upload_stem
 from ..results import ColumnFilterSummary
 from ..runs import PREVIEW_ROW_COUNT, validate_output_filename
-from .jobs import JobService, RunAlreadyActiveError
+from .jobs import JobService, RunAlreadyActiveError, run_file_url
 from .options import parse_flag, settings_from_request
 from .route_helpers import (
     bad_request,
@@ -360,6 +360,7 @@ def register_upload_routes(app: Flask, service: JobService) -> None:
                     column_filter_list=settings.column_filter_list,
                     resume=resume,
                     upload_directory=upload_directory,
+                    file_url=run_file_url(run_id),
                 )
             except RunAlreadyActiveError:
                 refuse_run_in_use(run_id)

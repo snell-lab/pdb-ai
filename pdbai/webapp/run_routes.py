@@ -30,7 +30,7 @@ from ..json_values import object_dict, str_list
 from ..runs import RunDirectory, RunLockedError, list_run_summaries, run_table_names
 from ..runs.state import manifest_text, read_json_object
 from ..runs.storage import deletion_name
-from .jobs import JobService, RunAlreadyActiveError, effective_status
+from .jobs import JobService, RunAlreadyActiveError, effective_status, run_file_url
 from .options import engine_options_from_settings
 from .route_helpers import (
     RUN_NOT_FOUND,
@@ -263,6 +263,7 @@ def register_run_routes(app: Flask, service: JobService) -> None:
                     str_list(settings.get("column_filter_list")) or None
                 ),
                 resume=True,
+                file_url=run_file_url(run_id),
             )
         except RunAlreadyActiveError:
             refuse_run_in_use(run_id)

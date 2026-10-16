@@ -19,7 +19,7 @@ from flask import Flask, jsonify
 from flask.typing import ResponseReturnValue
 
 from ..selection import SelectionResult
-from .jobs import JobService, RunAlreadyActiveError
+from .jobs import JobService, RunAlreadyActiveError, run_file_url
 from .options import parse_flag, parse_pdb_ids, settings_from_request
 from .route_helpers import bad_request, json_body, refuse_run_in_use, run_id_to_build
 
@@ -108,6 +108,7 @@ def register_build_routes(app: Flask, service: JobService) -> None:
                 column_filter_mode=settings.column_filter_mode,
                 column_filter_list=settings.column_filter_list,
                 resume=resume,
+                file_url=run_file_url(run_id),
                 search_result=search_result,
             )
         except RunAlreadyActiveError:

@@ -22,7 +22,7 @@ from pdbai.schema import schema_fingerprint
 from pdbai.webapp import create_app, jobs
 from pdbai.webapp.factory import job_service as _service
 from pdbai.webapp.jobs import JobService, RunAlreadyActiveError, effective_status
-from webapp.conftest import _wait_for_job
+from webapp.conftest import _file_url, _wait_for_job
 
 # Options that run no engine needing an install or the network.
 _OPTIONS = EngineOptions(values={"include_rabdam": False})
@@ -49,6 +49,7 @@ def _spawn(service: JobService, run_id: str, *, resume: bool = False) -> None:
         column_filter_mode=None,
         column_filter_list=None,
         resume=resume,
+        file_url=_file_url(run_id),
     )
 
 
@@ -461,6 +462,7 @@ def test_a_request_with_other_settings_keeps_a_completed_result(
         column_filter_mode=None,
         column_filter_list=None,
         resume=True,
+        file_url=_file_url("finished"),
     )
     _wait_for_job(service, "finished")
 
@@ -573,6 +575,7 @@ def test_a_thread_that_cannot_start_releases_the_run_and_its_uploads(
             column_filter_list=None,
             resume=False,
             upload_directory=upload_directory,
+            file_url=_file_url("unstarted"),
         )
 
     assert not service.is_held("unstarted")

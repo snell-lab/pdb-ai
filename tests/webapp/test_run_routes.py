@@ -25,7 +25,7 @@ from pdbai.runs import RunState, open_run
 from pdbai.webapp import jobs
 from pdbai.webapp.factory import job_service as _service
 from pdbai.webapp.jobs import JobService
-from webapp.conftest import _client, _wait_for_job
+from webapp.conftest import _client, _file_url, _wait_for_job
 
 # Options that run no engine needing an install or the network.
 _OPTIONS = EngineOptions(values={"include_rabdam": False})
@@ -93,6 +93,7 @@ def _spawn(service: JobService, run_id: str) -> None:
         column_filter_mode=None,
         column_filter_list=None,
         resume=False,
+        file_url=_file_url(run_id),
     )
 
 

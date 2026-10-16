@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import runpy
 import sys
 from pathlib import Path
@@ -10,8 +11,15 @@ import pytest
 from pdbai import cli
 from pdbai.engines.catalog import get_engine_registry
 from pdbai.engines.core import EngineOptions
+from pdbai.profiles import RunSettings
 from pdbai.results import DatasetBuildResult, NoDatasetError, PdbProcessResult
 from pdbai.runs import RunLockedError, RunNotResumableError
+
+
+def _parse_args(argv: list[str]) -> tuple[argparse.Namespace, RunSettings]:
+    # This parses the command line as main does, and stops there.
+    parser = cli._build_parser()  # pyright: ignore[reportPrivateUsage]
+    return cli._parse_args(parser, argv)  # pyright: ignore[reportPrivateUsage]
 
 
 @pytest.mark.parametrize(
@@ -29,7 +37,7 @@ def test_cli_rejects_incomplete_or_invalid_arguments(
     arguments: list[str],
 ) -> None:
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(arguments)
+        _parse_args(arguments)
 
     assert caught.value.code == 2
 
@@ -49,14 +57,14 @@ def test_cli_refuses_a_setting_of_an_engine_left_off(
     arguments: list[str], message: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(["1ABC", *arguments])
+        _parse_args(["1ABC", *arguments])
 
     assert caught.value.code == 2
     assert capsys.readouterr().err.endswith(f"error: {message}\n")
 
 
 def test_cli_accepts_a_setting_of_an_engine_a_profile_turns_on() -> None:
-    _, settings = cli.parse_args(
+    _, settings = _parse_args(
         ["1ABC", "--profile", "ml_minimal", "--sasa-accuracy", "fast"]
     )
 
@@ -64,7 +72,7 @@ def test_cli_accepts_a_setting_of_an_engine_a_profile_turns_on() -> None:
 
 
 def test_cli_accepts_complete_resume_and_filter_arguments() -> None:
-    args, _ = cli.parse_args(
+    args, _ = _parse_args(
         [
             "1ABC",
             "--resume",
@@ -88,20 +96,20 @@ def test_cli_reports_a_malformed_pdb_id_as_a_usage_error(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(["1ABC", "NONE"])
+        _parse_args(["1ABC", "NONE"])
 
     assert caught.value.code == 2
     assert "Invalid PDB ID 'NONE'" in capsys.readouterr().err
 
 
 def test_cli_normalizes_the_pdb_ids_it_is_given() -> None:
-    args, _ = cli.parse_args([" 1abc", "4hhb"])
+    args, _ = _parse_args([" 1abc", "4hhb"])
 
     assert args.pdb_ids == ["1ABC", "4HHB"]
 
 
 def test_cli_column_filter_mode_ignores_case() -> None:
-    _, settings = cli.parse_args(
+    _, settings = _parse_args(
         ["1ABC", "--column-filter-mode", "Include", "--column-filter-list", "pdb_id"]
     )
 
@@ -110,7 +118,7 @@ def test_cli_column_filter_mode_ignores_case() -> None:
 
 
 def test_cli_defaults_to_x_ray_with_every_engine_off() -> None:
-    args, settings = cli.parse_args(["1ABC"])
+    args, settings = _parse_args(["1ABC"])
     options = settings.options
 
     assert args.technique == "x_ray_diffraction"
@@ -122,28 +130,28 @@ def test_cli_defaults_to_x_ray_with_every_engine_off() -> None:
 def test_cli_rabdam_is_opt_in_and_needs_x_ray(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    _, enabled = cli.parse_args(["1ABC", "--include-rabdam"])
-    _, default = cli.parse_args(["1ABC", "--technique", "solution_nmr"])
+    _, enabled = _parse_args(["1ABC", "--include-rabdam"])
+    _, default = _parse_args(["1ABC", "--technique", "solution_nmr"])
 
     assert enabled.options.flag("include_rabdam") is True
     assert default.options.flag("include_rabdam") is False
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(["1ABC", "--no-rabdam"])
+        _parse_args(["1ABC", "--no-rabdam"])
     assert caught.value.code == 2
     for technique in ("electron_microscopy", "solution_nmr"):
         with pytest.raises(SystemExit) as caught:
-            cli.parse_args(["1ABC", "--technique", technique, "--include-rabdam"])
+            _parse_args(["1ABC", "--technique", technique, "--include-rabdam"])
         assert caught.value.code == 2
         assert "RABDAM (include_rabdam) is not available" in capsys.readouterr().err
 
 
 def test_cli_xray_source_defaults_to_all_and_needs_the_x_ray_technique() -> None:
-    args, _ = cli.parse_args(["1ABC", "--xray-source", "free_electron_laser"])
+    args, _ = _parse_args(["1ABC", "--xray-source", "free_electron_laser"])
 
     assert args.xray_source == "free_electron_laser"
-    assert cli.parse_args(["1ABC"])[0].xray_source == "all"
+    assert _parse_args(["1ABC"])[0].xray_source == "all"
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(
+        _parse_args(
             [
                 "1ABC",
                 "--technique",
@@ -154,7 +162,7 @@ def test_cli_xray_source_defaults_to_all_and_needs_the_x_ray_technique() -> None
         )
     assert caught.value.code == 2
     with pytest.raises(SystemExit):
-        cli.parse_args(["1ABC", "--xray-source", "xfel"])
+        _parse_args(["1ABC", "--xray-source", "xfel"])
 
 
 def test_cli_refuses_an_engine_the_technique_rules_out(
@@ -312,13 +320,13 @@ def _selected(*pdb_ids: str, total: int | None = None, limit: int | None = None)
 )
 def test_cli_selection_flags_need_each_other(arguments: list[str]) -> None:
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(arguments)
+        _parse_args(arguments)
 
     assert caught.value.code == 2
 
 
 def test_cli_select_parses_without_positional_ids() -> None:
-    args, _ = cli.parse_args(
+    args, _ = _parse_args(
         ["--select", "--xray-source", "free_electron_laser", "--limit", "10"]
     )
 
@@ -339,7 +347,7 @@ def test_cli_has_a_flag_for_every_declared_search_filter() -> None:
     help_text = cli._build_parser().format_help()  # pyright: ignore[reportPrivateUsage]
 
     for search_filter in SEARCH_FILTERS:
-        args, _ = cli.parse_args(["--select", search_filter.cli_flag, "2.5"])
+        args, _ = _parse_args(["--select", search_filter.cli_flag, "2.5"])
         assert getattr(args, search_filter.id) == 2.5
         assert f"{search_filter.cli_flag} " in help_text
 
@@ -370,7 +378,7 @@ def test_cli_refuses_a_range_filter_it_cannot_search_with(
     arguments: list[str], error: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(arguments)
+        _parse_args(arguments)
 
     assert caught.value.code == 2
     assert capsys.readouterr().err.endswith(f"error: {error}\n")
@@ -401,7 +409,7 @@ def test_cli_reads_the_uniprot_accessions_from_a_file(
     ]
     # Without --select the flag has nothing to narrow.
     with pytest.raises(SystemExit):
-        cli.parse_args(["1ABC", "--uniprot-accessions", str(listed)])
+        _parse_args(["1ABC", "--uniprot-accessions", str(listed)])
 
 
 @pytest.mark.parametrize(
@@ -420,7 +428,7 @@ def test_cli_refuses_an_accession_file_it_cannot_search_with(
         listed.write_text(content, encoding="utf-8")
 
     with pytest.raises(SystemExit) as caught:
-        cli.parse_args(["--select", "--uniprot-accessions", str(listed)])
+        _parse_args(["--select", "--uniprot-accessions", str(listed)])
 
     assert caught.value.code == 2
     assert error in capsys.readouterr().err

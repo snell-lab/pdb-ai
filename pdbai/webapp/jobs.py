@@ -21,10 +21,12 @@ running that no worker holds, here or in another process, is reported as
 stale.
 
 A job's web payload carries its status, its latest progress event, its
-error, and the result summary the page renders. The per-entry results and
-the progress history stay in the run's own files, run_report.csv and
-events.jsonl. The page reads neither, and sending them would make every poll
-of a large run heavy.
+error, and the result summary the page renders. The summary's links come
+from a URL that the request starting the job built, so they follow the
+prefix the app is served under. The per-entry results and the progress
+history stay in the run's own files, run_report.csv and events.jsonl. The
+page reads neither, and sending them would make every poll of a large run
+heavy.
 """
 
 from __future__ import annotations
@@ -40,6 +42,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, TypedDict, TypeGuard, get_args
+from urllib.parse import quote
+
+from flask import url_for
 
 from ..column_filtering import ColumnFilterMode
 from ..engines.core import EngineOptions
@@ -55,6 +60,10 @@ from ..selection import SelectionResult
 from .route_helpers import camel_keys
 
 _logger = logging.getLogger(__name__)
+
+# A run's file URL, as run_file_url builds it, holds this text in place of the
+# file's name.
+FILENAME_PLACEHOLDER = "FILENAME"
 
 # Progress may arrive once per structure, and job.json needs no write for each.
 _PERSIST_MIN_INTERVAL_SECONDS = 1.0
@@ -186,11 +195,25 @@ def effective_status(status: object, *, held: bool) -> ClientStatus:
     return status
 
 
-def _result_payload(run_id: str, result: DatasetBuildResult) -> dict[str, object]:
+def run_file_url(run_id: str) -> str:
+    """Return the URL of the run's files, for the file_url a build is given.
+
+    url_for builds it, so it follows the prefix the current request came
+    under. FILENAME_PLACEHOLDER stands in for the file's name. Calling this
+    outside a request raises RuntimeError.
+    """
+    return url_for("run_file", run_id=run_id, filename=FILENAME_PLACEHOLDER)
+
+
+def _result_payload(result: DatasetBuildResult, file_url: str) -> dict[str, object]:
     # Web builds are not published, so each file is linked where settlement
-    # wrote it in the run directory. Its name alone identifies it there.
+    # wrote it in the run directory. Its name alone identifies it there. The
+    # file name is the URL's last part, so a run ID that holds the placeholder
+    # text is left alone.
+    head, _, tail = file_url.rpartition(FILENAME_PLACEHOLDER)
+
     def link(path: Path) -> str:
-        return f"/api/runs/{run_id}/files/{path.name}"
+        return f"{head}{quote(path.name)}{tail}"
 
     summary = {
         # These are the entries the dataset holds, which the page shows as
@@ -509,6 +532,7 @@ class JobService:
         self,
         job: _Job,
         build: Callable[[_Job], DatasetBuildResult],
+        file_url: str,
         cleanup: Callable[[], None] | None,
     ) -> None:
         # This is the worker thread's body. Every way out of it leaves the job
@@ -528,7 +552,7 @@ class JobService:
             persisted = self._finish(
                 job,
                 "paused" if result.paused else "completed",
-                result=_result_payload(job.run_id, result),
+                result=_result_payload(result, file_url),
             )
         finally:
             # The run stays claimed until its uploads are gone, so a job that
@@ -545,6 +569,7 @@ class JobService:
         self,
         run_id: str,
         build: Callable[[_Job], DatasetBuildResult],
+        file_url: str,
         cleanup: Callable[[], None] | None = None,
     ) -> None:
         # Claim the run and start its worker, or raise RunAlreadyActiveError.
@@ -557,7 +582,7 @@ class JobService:
         # run stale. A resume continues it from its last recorded entry.
         thread = threading.Thread(
             target=self._run,
-            args=(job, build, cleanup),
+            args=(job, build, file_url, cleanup),
             name=f"pdbai-build-{run_id}",
             daemon=True,
         )
@@ -581,15 +606,19 @@ class JobService:
         column_filter_mode: ColumnFilterMode | None,
         column_filter_list: Iterable[str] | None,
         resume: bool,
+        file_url: str,
         search_result: SelectionResult | None = None,
     ) -> None:
         """Start a background build of run_id from PDB IDs.
 
-        The arguments are those of build_atom_site_dataset. The tables stay in
-        the run directory. When the run is held in this process, nothing
-        starts and RunAlreadyActiveError is raised. Anything the build raises
-        is recorded as the job's error instead. That includes RunLockedError
-        for a run another process holds.
+        The arguments are those of build_atom_site_dataset, but for
+        ``file_url``. That is the URL of the run's files as run_file_url
+        builds it, and the result links each file by it. The build runs
+        outside any request, so the starting request builds the URL. The
+        tables stay in the run directory. When the run is held in this
+        process, nothing starts and RunAlreadyActiveError is raised. Anything
+        the build raises is recorded as the job's error instead. That includes
+        RunLockedError for a run another process holds.
         """
         requested = list(pdb_ids)
 
@@ -609,7 +638,7 @@ class JobService:
             )
             return _without_local_paths(result, (), self._working_directory)
 
-        self._start(run_id, build)
+        self._start(run_id, build, file_url)
 
     def spawn_upload_build(
         self,
@@ -621,16 +650,18 @@ class JobService:
         column_filter_list: Iterable[str] | None,
         resume: bool,
         upload_directory: Path,
+        file_url: str,
     ) -> None:
         """Start a background build of run_id from uploaded mmCIF files.
 
-        The arguments are those of build_atom_site_dataset_from_mmcif_files.
-        upload_directory holds the files. Only the build needs them, and they
-        may be unpublished data. The directory is therefore removed once the
-        build ends, or at once when the thread cannot start. When the run is
-        held in this process, nothing starts, nothing is removed, and
-        RunAlreadyActiveError is raised. Anything the build raises is
-        recorded as the job's error.
+        The arguments are those of build_atom_site_dataset_from_mmcif_files,
+        and ``file_url`` as spawn_download_build takes it. upload_directory
+        holds the files. Only the build needs them, and they may be
+        unpublished data. The directory is therefore removed once the build
+        ends, or at once when the thread cannot start. When the run is held in
+        this process, nothing starts, nothing is removed, and
+        RunAlreadyActiveError is raised. Anything the build raises is recorded
+        as the job's error.
         """
         files = list(mmcif_files)
 
@@ -652,14 +683,16 @@ class JobService:
         def cleanup() -> None:
             shutil.rmtree(upload_directory, ignore_errors=True)
 
-        self._start(run_id, build, cleanup)
+        self._start(run_id, build, file_url, cleanup)
 
 
 __all__ = [
+    "FILENAME_PLACEHOLDER",
     "ClientStatus",
     "JobService",
     "JobStatus",
     "ProgressEvent",
     "RunAlreadyActiveError",
     "effective_status",
+    "run_file_url",
 ]

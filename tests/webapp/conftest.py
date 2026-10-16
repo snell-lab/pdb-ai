@@ -15,10 +15,10 @@ from pytest import MonkeyPatch
 
 from pdbai.engines.core import EngineOptions
 from pdbai.webapp import create_app
-from pdbai.webapp.jobs import JobService
+from pdbai.webapp.jobs import FILENAME_PLACEHOLDER, JobService
 from pdbai.webapp.options import settings_from_request
 
-__all__ = ["_client", "_options", "_wait_for_job"]
+__all__ = ["_client", "_file_url", "_options", "_wait_for_job"]
 
 
 def _client(tmp_path: Path, monkeypatch: MonkeyPatch) -> FlaskClient:
@@ -27,6 +27,11 @@ def _client(tmp_path: Path, monkeypatch: MonkeyPatch) -> FlaskClient:
     app = create_app()
     app.testing = True
     return app.test_client()
+
+
+def _file_url(run_id: str) -> str:
+    """Return the file URL a route gives a build of the run, with no prefix."""
+    return f"/api/runs/{run_id}/files/{FILENAME_PLACEHOLDER}"
 
 
 def _options(payload: dict[str, object]) -> EngineOptions:
