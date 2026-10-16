@@ -276,9 +276,9 @@ no warning of its own. rabdam-custom keeps the highest-occupancy conformer of
 each atom, as its reference database was computed, while the atom table keeps
 one conformer per residue. Where the two choose differently, as at a site with
 two residue types, the scored atom has no row and its row has no score.
-`rabdam_message` counts, for each source, the scored atoms that reached no row,
-which also include atoms PDB-Redo built that the deposited model lacks. In
-`both` mode, four additional boolean columns (`bdamage_matches`,
+`rabdam_message` counts, for each source, the scored atoms that reached no row.
+For PDB-Redo's model these also include atoms PDB-Redo built that the deposited
+model lacks. In `both` mode, four additional boolean columns (`bdamage_matches`,
 `packing_density_matches`, `bnet_matches`, `bnet_percentile_matches`) flag
 whether the two sources agree within an absolute tolerance of 1e-3 for that atom
 or structure. They are blank (a pandas `<NA>`) where either side has no

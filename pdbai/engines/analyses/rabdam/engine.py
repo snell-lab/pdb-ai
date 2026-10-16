@@ -562,14 +562,21 @@ class RabdamEngine:
                     "columns are therefore empty for this structure."
                 )
             if placed.unplaced_atom_count:
+                # Only a PDB-Redo model can hold atoms the deposited model lacks.
+                reasons = (
+                    "rabdam-custom keeps the highest-occupancy conformer of each "
+                    "atom and the atom table one conformer per residue"
+                    + (
+                        ", and PDB-Redo can build atoms the deposited model lacks"
+                        if bridged
+                        else ""
+                    )
+                )
                 warnings.append(
                     f"{placed.unplaced_atom_count} of the atoms rabdam-custom "
                     f"scored on {model} for {context.pdb_id} have no row in the "
                     "atom table, so their BDamage and packing density are not in "
-                    "the dataset. rabdam-custom keeps the highest-occupancy "
-                    "conformer of each atom and the atom table one conformer per "
-                    "residue, and PDB-Redo can build atoms the deposited model "
-                    "lacks."
+                    f"the dataset. {reasons[0].upper()}{reasons[1:]}."
                 )
             if (
                 placed.alignment is not None

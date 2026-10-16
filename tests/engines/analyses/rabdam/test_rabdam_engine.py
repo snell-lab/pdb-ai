@@ -788,6 +788,9 @@ def test_scored_atoms_without_a_row_are_counted_in_a_warning() -> None:
         "1 of the atoms rabdam-custom scored on the RCSB model for 1ABC have no "
         "row in the atom table"
     )
+    # Atoms built by PDB-Redo cannot explain a gap in the deposited model's scores.
+    assert result.warnings[0].endswith("one conformer per residue.")
+    assert "PDB-Redo" not in result.warnings[0]
 
 
 def test_report_message_is_missing_without_warnings() -> None:
