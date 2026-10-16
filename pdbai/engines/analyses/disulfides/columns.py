@@ -33,8 +33,8 @@ from ...core import (
     site_atom_link,
     site_key_columns,
 )
+from ..struct_conn import DETECTION_METHODS
 from .constants import (
-    DETECTION_METHODS,
     DISULFIDE_SEARCH_CUTOFF_A,
     METAL_CONTACT_DISTANCE_A,
     OCCUPANCY_SUM_DECIMALS,

@@ -152,7 +152,3 @@ def test_accuracy_modes_resolve_to_their_point_counts() -> None:
     assert resolve_sphere_point_count("high") == ("high", 5_000)
     # An explicit count wins, and the mode it replaces is not checked.
     assert resolve_sphere_point_count("nonsense", 123) == ("custom", 123)
-    with pytest.raises(ValueError, match="Unknown SASA accuracy mode 'exact'"):
-        resolve_sphere_point_count("exact")
-    with pytest.raises(ValueError, match="positive integer"):
-        resolve_sphere_point_count("fast", 0)

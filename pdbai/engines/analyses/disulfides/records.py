@@ -1,9 +1,10 @@
 """The deposited disulfide records of a structure file, read from _struct_conn.
 
 read_disulfide_records reads the _struct_conn category of the flat mmCIF
-dictionary, never the atom table. The parser repeats a one-row category on
-every atom, but a record has no positional link to the atoms, so a structure
-with one record would otherwise look like a structure with one per atom.
+dictionary through struct_conn.py, never the atom table. The parser repeats
+a one-row category on every atom, but a record has no positional link to the
+atoms, so a structure with one record would otherwise look like a structure
+with one per atom.
 
 Each text is read as clean_string_series reads atom identity: stripped, and
 empty when the file writes a placeholder. A record is kept when its
@@ -34,45 +35,12 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-import pandas as pd
-
-from ....structure.residue_identity import clean_string_series
+from ..struct_conn import PartnerAddress, StructConnRecord, read_struct_conn
 from .constants import (
     CYSTEINE_RESIDUE_NAME,
     DISULFIDE_CONNECTION_TYPE,
-    IDENTITY_SYMMETRY_OPERATOR,
     SULFUR_ATOM_NAME,
 )
-
-_STRUCT_CONN_PREFIX = "_struct_conn."
-
-
-@dataclass(frozen=True)
-class PartnerAddress:
-    """Where one partner of a record sits, by its author and its label fields.
-
-    Each field is stripped text, empty when the file gives no value.
-    """
-
-    chain_id: str
-    res_num: str
-    ins_code: str
-    label_asym_id: str
-    label_seq_id: str
-
-    @property
-    def has_author_fields(self) -> bool:
-        """Return whether the author chain and residue number are both given."""
-        return bool(self.chain_id and self.res_num)
-
-
-@dataclass(frozen=True)
-class DisulfideRecord:
-    """A deposited disulfide that joins two cysteine SG atoms of one molecule."""
-
-    record_id: str
-    first: PartnerAddress
-    second: PartnerAddress
 
 
 @dataclass(frozen=True)
@@ -84,71 +52,20 @@ class DisulfideRecords:
     molecule to a symmetry mate.
     """
 
-    records: tuple[DisulfideRecord, ...]
+    records: tuple[StructConnRecord, ...]
     symmetry_record_count: int
 
 
-@dataclass(frozen=True)
-class _Partner:
-    """One partner of a _struct_conn row, as the rules of this module read it."""
+def _in_scope(partner: PartnerAddress) -> bool:
+    """Return whether a partner may be a cysteine SG.
 
-    address: PartnerAddress
-    # Whether the partner may be a cysteine SG. It may when each of its
-    # component and atom names is either missing or the one the table is about.
-    in_scope: bool
-    # The symmetry operator without its underscore, so 1_555 and 1555 agree.
-    operator: str
-
-
-def _normalized_operator(text: str) -> str:
-    """Return a symmetry operator without underscores, the identity if empty."""
-    return (text or IDENTITY_SYMMETRY_OPERATOR).replace("_", "")
-
-
-def _partners(category: pd.DataFrame, number: int) -> list[_Partner]:
-    """Return partner ``number`` (1 or 2) of every row of ``category``."""
-
-    def text(item: str) -> list[str]:
-        values: list[str] = clean_string_series(
-            category, f"{_STRUCT_CONN_PREFIX}{item}"
-        ).tolist()
-        return values
-
-    prefix = f"ptnr{number}"
-    components = [
-        (author or label).upper()
-        for author, label in zip(
-            text(f"{prefix}_auth_comp_id"), text(f"{prefix}_label_comp_id"), strict=True
-        )
-    ]
-    atoms = [
-        label or author
-        for label, author in zip(
-            text(f"{prefix}_label_atom_id"), text(f"{prefix}_auth_atom_id"), strict=True
-        )
-    ]
-    addresses = [
-        PartnerAddress(*fields)
-        for fields in zip(
-            text(f"{prefix}_auth_asym_id"),
-            text(f"{prefix}_auth_seq_id"),
-            text(f"pdbx_{prefix}_PDB_ins_code"),
-            text(f"{prefix}_label_asym_id"),
-            text(f"{prefix}_label_seq_id"),
-            strict=True,
-        )
-    ]
-    return [
-        _Partner(
-            address=address,
-            in_scope=component in ("", CYSTEINE_RESIDUE_NAME)
-            and atom in ("", SULFUR_ATOM_NAME),
-            operator=_normalized_operator(operator),
-        )
-        for address, component, atom, operator in zip(
-            addresses, components, atoms, text(f"{prefix}_symmetry"), strict=True
-        )
-    ]
+    It may when each of its component and atom names is either missing or
+    the one the table is about.
+    """
+    return partner.component in ("", CYSTEINE_RESIDUE_NAME) and partner.atom_name in (
+        "",
+        SULFUR_ATOM_NAME,
+    )
 
 
 def read_disulfide_records(
@@ -161,45 +78,18 @@ def read_disulfide_records(
     out, and records to a symmetry mate are only counted, as the module
     describes.
     """
-    items = {
-        name: list(values)
-        for name, values in mmcif_dict.items()
-        if name.startswith(_STRUCT_CONN_PREFIX)
-    }
-    if not items:
-        return DisulfideRecords((), 0)
-    category = pd.DataFrame(items)
-    record_ids: list[str] = clean_string_series(
-        category, f"{_STRUCT_CONN_PREFIX}id"
-    ).tolist()
-    connection_types: list[str] = (
-        clean_string_series(category, f"{_STRUCT_CONN_PREFIX}conn_type_id")
-        .str.lower()
-        .tolist()
-    )
-    records: list[DisulfideRecord] = []
+    records: list[StructConnRecord] = []
     symmetry_record_count = 0
-    for record_id, connection_type, first, second in zip(
-        record_ids,
-        connection_types,
-        _partners(category, 1),
-        _partners(category, 2),
-        strict=True,
-    ):
-        if connection_type != DISULFIDE_CONNECTION_TYPE:
+    for record in read_struct_conn(mmcif_dict):
+        if record.connection_type != DISULFIDE_CONNECTION_TYPE:
             continue
-        if not (first.in_scope and second.in_scope):
+        if not (_in_scope(record.first) and _in_scope(record.second)):
             continue
-        if first.operator != second.operator:
+        if not record.same_operator:
             symmetry_record_count += 1
             continue
-        records.append(DisulfideRecord(record_id, first.address, second.address))
+        records.append(record)
     return DisulfideRecords(tuple(records), symmetry_record_count)
 
 
-__all__ = [
-    "DisulfideRecord",
-    "DisulfideRecords",
-    "PartnerAddress",
-    "read_disulfide_records",
-]
+__all__ = ["DisulfideRecords", "read_disulfide_records"]

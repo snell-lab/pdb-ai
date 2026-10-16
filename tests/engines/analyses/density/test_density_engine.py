@@ -29,7 +29,7 @@ from pdbai.engines.analyses.density.constants import (
     MAP_MIN_SAMPLE_RATE,
     MAP_SAMPLE_RATE,
 )
-from pdbai.engines.analyses.density.engine import deposited_cell
+from pdbai.engines.analyses.site_geometry import read_cell_parameters
 from pdbai.engines.catalog import get_engine_registry
 from pdbai.engines.compatibility import require_compatible_options
 from pdbai.engines.core import ColumnGranularity, EngineContext, EngineOptions
@@ -570,10 +570,15 @@ def test_the_deposited_cell_is_read_from_the_atom_table() -> None:
         }
     )
 
-    assert deposited_cell(atoms) == CELL
-    assert deposited_cell(atoms.drop(columns=["_cell.angle_beta"])) is None
-    assert deposited_cell(atoms.assign(**{"_cell.length_a": "?"})) is None
-    assert deposited_cell(atoms.iloc[:0]) is None
+    assert read_cell_parameters(atoms) == CELL
+    assert read_cell_parameters(atoms.drop(columns=["_cell.angle_beta"])) is None
+    assert read_cell_parameters(atoms.assign(**{"_cell.length_a": "?"})) is None
+    assert read_cell_parameters(atoms.iloc[:0]) is None
+    # A standard uncertainty is dropped, as the parser and every other engine
+    # that reads the cell drop it.
+    assert read_cell_parameters(atoms.assign(**{"_cell.length_a": "20.000(4)"})) == (
+        CELL
+    )
 
 
 def _context(atoms: pd.DataFrame, path: Path | None) -> EngineContext:

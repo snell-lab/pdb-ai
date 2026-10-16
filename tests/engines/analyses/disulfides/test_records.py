@@ -5,11 +5,10 @@ from collections.abc import Mapping
 import pytest
 
 from pdbai.engines.analyses.disulfides.records import (
-    DisulfideRecord,
     DisulfideRecords,
-    PartnerAddress,
     read_disulfide_records,
 )
+from pdbai.engines.analyses.struct_conn import PartnerAddress, StructConnRecord
 
 
 def _record(
@@ -54,10 +53,28 @@ def test_a_disulf_record_keeps_both_partners_author_and_label_fields() -> None:
 
     assert records == DisulfideRecords(
         records=(
-            DisulfideRecord(
+            StructConnRecord(
                 "disulf1",
-                PartnerAddress("A", "10", "B", "A", "1"),
-                PartnerAddress("", "", "", "C", ""),
+                "disulf",
+                PartnerAddress(
+                    label_asym_id="A",
+                    label_seq_id="1",
+                    auth_asym_id="A",
+                    auth_seq_id="10",
+                    ins_code="B",
+                    component="CYS",
+                    atom_name="SG",
+                ),
+                PartnerAddress(
+                    label_asym_id="C",
+                    label_seq_id="",
+                    auth_asym_id="",
+                    auth_seq_id="",
+                    ins_code="",
+                    component="CYS",
+                    atom_name="SG",
+                ),
+                same_operator=True,
             ),
         ),
         symmetry_record_count=0,

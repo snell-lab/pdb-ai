@@ -13,9 +13,9 @@ from pdbai.engines.analyses.disulfides.columns import (
     DISULFIDES_TABLE,
 )
 from pdbai.engines.analyses.disulfides.constants import (
-    DETECTION_METHODS,
     PAIR_STATUSES,
 )
+from pdbai.engines.analyses.struct_conn import DETECTION_METHODS
 from pdbai.engines.catalog import get_engine_registry
 from pdbai.engines.compatibility import require_compatible_options
 from pdbai.engines.core import (

@@ -18,6 +18,11 @@ metal_metal_distances tables, with a full description of each column, and
 the atom column that links each metal atom to its site.
 
 engine.py registers the engine with its option, tables, and report fields.
+Unlike the other engine packages, this one does not import its engine, so
+METAL_SITE_ENGINE is imported from engine.py. compute.py reads the unit cell
+through site_geometry.py, which reads the metal elements from constants.py,
+and an import of constants.py that ran engine.py would come back round to
+site_geometry.py before it was defined.
 
 The method is that of the coordination module of Alchemy
 (https://github.com/snell-lab/alchemy, MIT), carried over without its
@@ -41,7 +46,3 @@ model is.
 The atom table keeps one conformer of each residue, and the engine reads that
 table, so a site is measured in the conformer the parser kept.
 """
-
-from .engine import METAL_SITE_ENGINE
-
-__all__ = ["METAL_SITE_ENGINE"]

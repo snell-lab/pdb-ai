@@ -51,8 +51,23 @@ import pandas as pd
 from scipy.spatial import cKDTree
 
 from ....structure.cif_numbers import coerce_cif_numbers
-from ....structure.residue_identity import clean_string_series
 from ...core import site_key_dataframe
+from ..site_geometry import (
+    SPECIAL_POSITION_CUTOFF_A,
+    CrystalSymmetry,
+    finite_mean,
+    number_array,
+    on_special_position,
+    positive_ratio,
+    read_file_crystal_symmetry,
+    text_array,
+)
+from ..struct_conn import (
+    IDENTITY_SYMMETRY_OPERATOR,
+    PartnerAddress,
+    StructConnRecord,
+    detection_method,
+)
 from .columns import (
     DONOR_PREFIX,
     METAL_BONDS_TABLE,
@@ -67,9 +82,6 @@ from .constants import (
     BOND_STATUS_OK,
     C_TERMINAL_DONOR_ATOMS,
     CANDIDATE_SEARCH_RADIUS_A,
-    DETECTED_BY_DISTANCE,
-    DETECTED_BY_RECORD,
-    DETECTED_BY_RECORD_AND_DISTANCE,
     DISTANCE_EPSILON_A,
     DONOR_AMINO_ACID,
     DONOR_ELEMENTS,
@@ -78,7 +90,6 @@ from .constants import (
     DONOR_WATER,
     FIRST_SPHERE_TOLERANCE_A,
     HYDROGEN_ELEMENTS,
-    IDENTITY_SYMMETRY_OPERATOR,
     INFERRED_DONOR_ATOMS,
     METAL_ELEMENTS,
     METAL_STATUS_DEGRADED,
@@ -105,21 +116,11 @@ from .constants import (
     RULE_WATER_OXYGEN,
     SITE_STATUS_NO_DONORS,
     SITE_STATUS_OK,
-    SPECIAL_POSITION_CUTOFF_A,
     STANDARD_AMINO_ACIDS,
 )
-from .records import MetalRecord, PartnerAddress, read_metal_records
+from .records import read_metal_records
 from .reference import cofactor_classes, element_targets, literature_distances
 
-_CELL_ITEMS = (
-    "_cell.length_a",
-    "_cell.length_b",
-    "_cell.length_c",
-    "_cell.angle_alpha",
-    "_cell.angle_beta",
-    "_cell.angle_gamma",
-)
-_SPACE_GROUP_ITEMS = ("_symmetry.space_group_name_H-M", "_space_group.name_H-M_alt")
 _REFLECTION_COUNT_ITEM = "_refine.ls_number_reflns_obs"
 _R_FREE_ITEM = "_refine.ls_R_factor_R_free"
 
@@ -163,14 +164,6 @@ class _Atoms:
     usable: npt.NDArray[np.bool_]
 
 
-@dataclass(frozen=True)
-class _Crystal:
-    """The unit cell with its symmetry images, or None without usable symmetry."""
-
-    cell: gemmi.UnitCell
-    operation_count: int
-
-
 @dataclass
 class _Contact:
     """One donor atom in one image around a metal atom."""
@@ -209,46 +202,27 @@ class _ModelSearch:
     )
 
 
-def _text(
-    atoms: pd.DataFrame, column: str, *, upper: bool = False
-) -> npt.NDArray[np.object_]:
-    values = clean_string_series(atoms, column)
-    if upper:
-        values = values.str.upper()
-    return values.to_numpy(dtype=object)
-
-
-def _numbers(atoms: pd.DataFrame, column: str) -> npt.NDArray[np.float64]:
-    if column not in atoms.columns:
-        return np.full(len(atoms), np.nan)
-    return pd.to_numeric(atoms[column], errors="coerce").to_numpy(
-        dtype=np.float64, na_value=np.nan
-    )
-
-
 def _read_atoms(atoms: pd.DataFrame) -> _Atoms:
     """Return the atom table's columns as arrays."""
-    element = _text(atoms, "element", upper=True)
-    xyz = np.column_stack([_numbers(atoms, name) for name in ("x", "y", "z")])
-    occupancy = _numbers(atoms, "occupancy")
-    model = _text(atoms, "model_num")
-    residue_key = (
-        _text(atoms, "residue_key")
-        if "residue_key" in atoms.columns
-        else np.array(
-            [
-                "|".join(parts)
-                for parts in zip(
-                    model,
-                    _text(atoms, "chain_id"),
-                    _text(atoms, "res_num"),
-                    _text(atoms, "_atom_site.pdbx_PDB_ins_code"),
-                    _text(atoms, "res_name"),
-                    strict=True,
-                )
-            ],
-            dtype=object,
-        )
+    element = text_array(atoms, "element", upper=True)
+    xyz = np.column_stack([number_array(atoms, name) for name in ("x", "y", "z")])
+    occupancy = number_array(atoms, "occupancy")
+    model = text_array(atoms, "model_num")
+    # A component is one residue of one model, told apart by chain, residue
+    # number, insertion code, and name.
+    residue_key = np.array(
+        [
+            "|".join(parts)
+            for parts in zip(
+                model,
+                text_array(atoms, "chain_id"),
+                text_array(atoms, "res_num"),
+                text_array(atoms, "_atom_site.pdbx_PDB_ins_code"),
+                text_array(atoms, "res_name"),
+                strict=True,
+            )
+        ],
+        dtype=object,
     )
     usable = (
         np.isfinite(xyz).all(axis=1)
@@ -257,62 +231,21 @@ def _read_atoms(atoms: pd.DataFrame) -> _Atoms:
     )
     return _Atoms(
         element=element,
-        res_name=_text(atoms, "res_name", upper=True),
-        atom_name=_text(atoms, "atom_name"),
+        res_name=text_array(atoms, "res_name", upper=True),
+        atom_name=text_array(atoms, "atom_name"),
         residue_key=residue_key,
         model=model,
-        altloc=_text(atoms, "_atom_site.label_alt_id"),
-        label_seq=_text(atoms, "_atom_site.label_seq_id"),
-        label_asym=_text(atoms, "_atom_site.label_asym_id"),
-        auth_asym=_text(atoms, "_atom_site.auth_asym_id"),
-        auth_seq=_text(atoms, "_atom_site.auth_seq_id"),
-        ins_code=_text(atoms, "_atom_site.pdbx_PDB_ins_code"),
+        altloc=text_array(atoms, "_atom_site.label_alt_id"),
+        label_seq=text_array(atoms, "_atom_site.label_seq_id"),
+        label_asym=text_array(atoms, "_atom_site.label_asym_id"),
+        auth_asym=text_array(atoms, "_atom_site.auth_asym_id"),
+        auth_seq=text_array(atoms, "_atom_site.auth_seq_id"),
+        ins_code=text_array(atoms, "_atom_site.pdbx_PDB_ins_code"),
         xyz=xyz,
         occupancy=occupancy,
-        b_factor=_numbers(atoms, "_atom_site.B_iso_or_equiv"),
+        b_factor=number_array(atoms, "_atom_site.B_iso_or_equiv"),
         usable=usable,
     )
-
-
-def _first_number(mmcif_dict: Mapping[str, Sequence[str | None]], item: str) -> float:
-    """Return the first value of an item as a number, or NaN."""
-    values = mmcif_dict.get(item)
-    if not values:
-        return math.nan
-    number = coerce_cif_numbers(pd.Series([values[0]], dtype=object)).iloc[0]
-    return float(number) if pd.notna(number) else math.nan
-
-
-def _read_crystal(
-    mmcif_dict: Mapping[str, Sequence[str | None]],
-) -> tuple[_Crystal | None, str | None]:
-    """Return the file's cell with its symmetry images, or None and the reason."""
-    lengths_and_angles = [_first_number(mmcif_dict, item) for item in _CELL_ITEMS]
-    if not all(math.isfinite(value) and value > 0 for value in lengths_and_angles):
-        return None, "the file gives no unit cell"
-    cell = gemmi.UnitCell(*lengths_and_angles)
-    if not cell.is_crystal():
-        return None, "the file's unit cell is a placeholder"
-    name = next(
-        (
-            values[0]
-            for item in _SPACE_GROUP_ITEMS
-            if (values := mmcif_dict.get(item)) and values[0]
-        ),
-        None,
-    )
-    space_group = (
-        gemmi.find_spacegroup_by_name(name, cell.alpha, cell.gamma)
-        if name is not None
-        else None
-    )
-    if space_group is None:
-        return None, f"the file's space group {name!r} is not recognized"
-    structure = gemmi.Structure()
-    structure.cell = cell
-    structure.spacegroup_hm = space_group.xhm()
-    structure.setup_cell_images()
-    return _Crystal(structure.cell, len(space_group.operations())), None
 
 
 def _refinement_terms(
@@ -333,7 +266,7 @@ def _refinement_terms(
 
 def precision_index(
     atoms: _Atoms,
-    crystal: _Crystal | None,
+    crystal: CrystalSymmetry | None,
     mmcif_dict: Mapping[str, Sequence[str | None]],
 ) -> float:
     """Return the entry's diffraction-component precision index in Å, or NaN.
@@ -472,7 +405,7 @@ def _annotate(contact: _Contact, atoms: _Atoms, metal_element: str) -> None:
 
 
 def _build_search(
-    atoms: _Atoms, rows: npt.NDArray[np.intp], crystal: _Crystal | None
+    atoms: _Atoms, rows: npt.NDArray[np.intp], crystal: CrystalSymmetry | None
 ) -> _ModelSearch:
     """Return the neighbour search over the given atom rows of one model.
 
@@ -515,7 +448,7 @@ def _proximal_contacts(
     metal_row: int,
     atoms: _Atoms,
     search: _ModelSearch,
-    crystal: _Crystal | None,
+    crystal: CrystalSymmetry | None,
 ) -> dict[tuple[int, str], _Contact]:
     """Return the candidate donors within the search radius of one metal atom.
 
@@ -621,10 +554,10 @@ def _resolve(
 
 
 def _declared_contacts(
-    records: Sequence[MetalRecord],
+    records: Sequence[StructConnRecord],
     atoms: _Atoms,
     search: _ModelSearch,
-    crystal: _Crystal | None,
+    crystal: CrystalSymmetry | None,
     metal_rows: frozenset[int],
     proximal: dict[int, dict[tuple[int, str], _Contact]],
 ) -> int:
@@ -701,17 +634,6 @@ def _declared_contacts(
     return unresolved
 
 
-def _detection_method(contact: _Contact) -> str:
-    if contact.declared and contact.inferred:
-        return DETECTED_BY_RECORD_AND_DISTANCE
-    return DETECTED_BY_RECORD if contact.declared else DETECTED_BY_DISTANCE
-
-
-def _mean(values: Sequence[float]) -> float:
-    finite = [value for value in values if math.isfinite(value)]
-    return float(np.mean(finite)) if finite else math.nan
-
-
 def compute_structure_metal_sites(
     atoms: pd.DataFrame,
     mmcif_dict: Mapping[str, Sequence[str | None]],
@@ -738,10 +660,11 @@ def compute_structure_metal_sites(
             warnings=(),
         )
     warnings: list[str] = []
-    crystal, symmetry_gap = _read_crystal(mmcif_dict)
-    if crystal is None:
+    symmetry = read_file_crystal_symmetry(mmcif_dict)
+    crystal = symmetry if isinstance(symmetry, CrystalSymmetry) else None
+    if isinstance(symmetry, str):
         warnings.append(
-            f"Symmetry mates were not searched, since {symmetry_gap}. Donor atoms "
+            f"Symmetry mates were not searched, since {symmetry}. Donor atoms "
             "of neighbouring molecules are missing from the tables."
         )
     dpi = precision_index(table, crystal, mmcif_dict)
@@ -844,7 +767,9 @@ def compute_structure_metal_sites(
                         "donor_element": str(table.element[contact.row]),
                         "donor_class": _donor_class(str(table.res_name[contact.row])),
                         "donor_rule": contact.rule,
-                        "detection_method": _detection_method(contact),
+                        "detection_method": detection_method(
+                            by_record=contact.declared, by_distance=contact.inferred
+                        ),
                         "distance_A": contact.distance,
                         "reference_kind": contact.reference_kind,
                         "reference_key": contact.reference_key,
@@ -890,18 +815,15 @@ def compute_structure_metal_sites(
                     (separations <= NEARBY_METAL_RADIUS_A + DISTANCE_EPSILON_A).sum()
                 )
 
-            special: object = pd.NA
-            if crystal is not None:
-                special = (
-                    crystal.cell.is_special_position(
-                        gemmi.Position(*(float(v) for v in table.xyz[metal_row])),
-                        SPECIAL_POSITION_CUTOFF_A,
-                    )
-                    > 0
-                )
+            special = on_special_position(
+                crystal.cell if crystal is not None else None,
+                table.xyz[metal_row].tolist(),
+            )
 
             distances = [contact.distance for contact in bonds]
-            donor_b = _mean([float(table.b_factor[contact.row]) for contact in bonds])
+            donor_b = finite_mean(
+                float(table.b_factor[contact.row]) for contact in bonds
+            )
             metal_b = float(table.b_factor[metal_row])
             finite_z = [value for value in z_values if math.isfinite(value)]
             site_positions.append(metal_row)
@@ -923,10 +845,10 @@ def compute_structure_metal_sites(
                         for c in bonds
                     ),
                     "donor_distance_min_A": min(distances) if distances else math.nan,
-                    "donor_distance_mean_A": _mean(distances),
+                    "donor_distance_mean_A": finite_mean(distances),
                     "donor_distance_max_A": max(distances) if distances else math.nan,
                     "n_reference_bonds": sum(math.isfinite(d) for d in deviations),
-                    "distance_deviation_mean_A": _mean(deviations),
+                    "distance_deviation_mean_A": finite_mean(deviations),
                     "distance_z_rms": (
                         float(np.sqrt(np.mean(np.square(finite_z))))
                         if finite_z
@@ -935,19 +857,12 @@ def compute_structure_metal_sites(
                     "occupancy": float(table.occupancy[metal_row]),
                     "b_factor_A2": metal_b,
                     "donor_b_factor_mean_A2": donor_b,
-                    "b_factor_ratio_to_donors": (
-                        metal_b / donor_b
-                        if math.isfinite(metal_b)
-                        and math.isfinite(donor_b)
-                        and metal_b > 0
-                        and donor_b > 0
-                        else math.nan
-                    ),
+                    "b_factor_ratio_to_donors": positive_ratio(metal_b, donor_b),
                     "nearest_metal_distance_A": nearest_distance,
                     "nearest_metal_element": nearest_element,
                     "nearest_metal_site_id": nearest_site,
                     "n_metals_within_6A": nearby,
-                    "on_special_position": special,
+                    "on_special_position": pd.NA if special is None else special,
                     "dpi_A": dpi,
                     "metal_site_status": (
                         SITE_STATUS_OK if bonds else SITE_STATUS_NO_DONORS

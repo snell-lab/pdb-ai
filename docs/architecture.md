@@ -276,7 +276,8 @@ pdb-ai/
 │   │   │   ├── alphafold/               # UniProt mapping and AFDB pLDDT
 │   │   │   └── validation/              # wwPDB validation reports and maps
 │   │   └── analyses/                    # Structural analysis engines
-│   │       ├── site_geometry.py         # Atom arrays, torsions, and planes for the site engines
+│   │       ├── site_geometry.py         # Atom arrays, geometry, and the unit cell for the site engines
+│   │       ├── struct_conn.py           # Deposited _struct_conn records for the site engines
 │   │       ├── cofactors/               # Flavins, tetrapyrroles, chromophores, retinal
 │   │       ├── density/                 # PDB-Redo map density at every atom
 │   │       ├── disulfides/              # Disulfide pairs from every conformer

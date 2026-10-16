@@ -313,7 +313,8 @@ EXPECTED_HEAVY_ATOMS: Mapping[str, frozenset[str]] = {
     "CSE": frozenset({"N", "CA", "C", "O", "CB", "SE"}),
 }
 
-# Water, which occludes in neither context.
+# Water, which occludes in neither context. The site-environment engine
+# reads the same components as water.
 WATER_COMPONENT_IDS = frozenset({"HOH", "DOD", "H2O", "WAT"})
 # Common crystallization additives, cryoprotectants, buffers, and reducing
 # agents, which occlude only when the user includes them. The list is short

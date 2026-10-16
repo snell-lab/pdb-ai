@@ -92,7 +92,6 @@ import re
 from collections.abc import Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
-import gemmi
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -108,13 +107,12 @@ from ....structure import (
 )
 from ....structure.residue_identity import clean_string_series
 from ...core import site_key_columns, site_key_dataframe
+from ..metal_sites.constants import METAL_ELEMENTS
+from ..struct_conn import PartnerAddress, StructConnRecord, detection_method
 from .columns import DISULFIDES_TABLE, PARTNER_PREFIX
 from .constants import (
     BETA_CARBON_ATOM_NAME,
     CYSTEINE_RESIDUE_NAME,
-    DETECTED_BY_DISTANCE,
-    DETECTED_BY_RECORD,
-    DETECTED_BY_RECORD_AND_DISTANCE,
     DISULFIDE_SEARCH_CUTOFF_A,
     DISULFIDE_STATUS_DEGRADED,
     DISULFIDE_STATUS_OK,
@@ -129,7 +127,7 @@ from .constants import (
     PAIR_STATUS_SG_NOT_IN_ATOM_TABLE,
     SULFUR_ATOM_NAME,
 )
-from .records import DisulfideRecord, PartnerAddress, read_disulfide_records
+from .records import read_disulfide_records
 
 _ATOM_SITE_PREFIX = "_atom_site."
 _ELEMENT_ITEM = "_atom_site.type_symbol"
@@ -190,9 +188,8 @@ _SITE_KEY_COLUMNS = tuple(column.name for column in site_key_columns())
 _WHOLE_NUMBER = re.compile(r"[+-]?\d+")
 
 # An element symbol as _atom_site.type_symbol writes it, with or without a
-# charge such as the 2+ of ZN2+. gemmi reads the letters in either case, but
-# it does not know a one-letter symbol followed by a digit, such as K1+, so
-# the letters are handed to it alone.
+# charge such as the 2+ of ZN2+ or the 1+ of K1+. The letters alone name the
+# element, in either case.
 _ELEMENT_SYMBOL = re.compile(r"([A-Za-z]{1,2})[0-9+-]*")
 
 # The decimals a distance is rounded to before it is compared with a limit,
@@ -223,7 +220,7 @@ class DisulfideComputation:
     """The disulfides of one structure, with its status and warnings.
 
     ``table`` holds the rows of the disulfides table in their declared
-    columns and types. ``link`` holds the atom link column on the atom
+    columns, which validate_tables casts to their declared types. ``link`` holds the atom link column on the atom
     table's index. ``status`` is "ok" or "degraded".
     ``unmatched_record_count`` counts the in-scope records that matched in
     no model, and ``symmetry_record_count`` the records that join a symmetry
@@ -573,12 +570,13 @@ def _read_conformers(
 def _names_metal(symbol: str | None) -> bool:
     """Return whether an _atom_site.type_symbol value names a metallic element.
 
-    gemmi decides which elements are metals. Case and a charge suffix do not
-    matter, so ZN, Zn, and Zn2+ all name zinc. A missing value, or text that
-    is not an element symbol with at most a charge, names no metal.
+    The metals are METAL_ELEMENTS, the elements the metal-site engine counts
+    as metals. Case and a charge suffix do not matter, so ZN, Zn, and Zn2+
+    all name zinc. A missing value, or text that is not an element symbol
+    with at most a charge, names no metal.
     """
     match = _ELEMENT_SYMBOL.fullmatch(symbol.strip()) if symbol else None
-    return match is not None and gemmi.Element(match.group(1)).is_metal
+    return match is not None and match.group(1).upper() in METAL_ELEMENTS
 
 
 def _read_metals(atom_site: Mapping[str, Sequence[str | None]]) -> _Metals:
@@ -712,11 +710,11 @@ class _RecordResolver:
             return self.by_label.get(
                 (model, partner.label_asym_id, partner.label_seq_id)
             )
-        key = (model, partner.chain_id, partner.res_num, partner.ins_code)
+        key = (model, partner.auth_asym_id, partner.auth_seq_id, partner.ins_code)
         return key if key in self.residues or key in self.without_sulfur else None
 
     def resolve(
-        self, record: DisulfideRecord, model: str
+        self, record: StructConnRecord, model: str
     ) -> tuple[_Residue, _Residue] | str:
         """Return the two residues ``record`` joins in ``model``, or why none."""
         first = self._residue(record.first, model)
@@ -740,7 +738,7 @@ class _RecordPairs:
 
 
 def _record_pairs(
-    records: Iterable[DisulfideRecord],
+    records: Iterable[StructConnRecord],
     models: Sequence[str],
     resolver: _RecordResolver,
     conformers: _Conformers,
@@ -991,13 +989,6 @@ def _pair_measures(
     }
 
 
-def _detection_method(by_record: bool, by_distance: bool) -> str:
-    """Return the detection method of a pair found by the sources given."""
-    if by_record and by_distance:
-        return DETECTED_BY_RECORD_AND_DISTANCE
-    return DETECTED_BY_RECORD if by_record else DETECTED_BY_DISTANCE
-
-
 def _fallback_warning(residue: _Residue, conformers: _Conformers) -> str:
     """Return the warning for a residue whose kept conformer has no SG."""
     model, chain_id, res_num, ins_code = residue.key
@@ -1011,12 +1002,14 @@ def _fallback_warning(residue: _Residue, conformers: _Conformers) -> str:
 
 
 def _table(rows: list[dict[str, object]]) -> pd.DataFrame:
-    """Return the rows as the disulfides table, in its declared columns and types."""
+    """Return the rows as the disulfides table, in its declared columns.
+
+    The host casts each column to its declared type when it validates the
+    table, as it does every engine's.
+    """
     if not rows:
         return DISULFIDES_TABLE.empty_dataframe()
-    return pd.DataFrame(rows, columns=list(DISULFIDES_TABLE.column_names)).astype(
-        {column.name: column.dtype for column in DISULFIDES_TABLE.columns}
-    )
+    return pd.DataFrame(rows, columns=list(DISULFIDES_TABLE.column_names))
 
 
 def compute_structure_disulfides(
@@ -1088,8 +1081,8 @@ def compute_structure_disulfides(
                     f"{PARTNER_PREFIX}{name}": value
                     for name, value in partner_keys.items()
                 },
-                "detection_method": _detection_method(
-                    pair in by_record.pairs, pair in by_distance
+                "detection_method": detection_method(
+                    by_record=pair in by_record.pairs, by_distance=pair in by_distance
                 ),
                 "metal_bridged": _metal_bridged(
                     first, second, conformers, metal_contacts

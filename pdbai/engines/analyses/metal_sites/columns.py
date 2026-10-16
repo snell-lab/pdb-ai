@@ -33,10 +33,11 @@ from ...core import (
     site_atom_link,
     site_key_columns,
 )
+from ..site_geometry import SPECIAL_POSITION_CUTOFF_A
+from ..struct_conn import DETECTION_METHODS
 from .constants import (
     BOND_STATUSES,
     CANDIDATE_SEARCH_RADIUS_A,
-    DETECTION_METHODS,
     DONOR_CLASSES,
     DONOR_RULES,
     FIRST_SPHERE_TOLERANCE_A,
@@ -44,7 +45,6 @@ from .constants import (
     PARENT_TYPES,
     REFERENCE_KINDS,
     SITE_STATUSES,
-    SPECIAL_POSITION_CUTOFF_A,
 )
 
 DONOR_PREFIX = "donor_"

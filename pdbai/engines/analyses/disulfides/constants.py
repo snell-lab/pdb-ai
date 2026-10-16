@@ -57,25 +57,10 @@ BETA_CARBON_ATOM_NAME = "CB"
 # The _struct_conn.conn_type_id of a deposited disulfide.
 DISULFIDE_CONNECTION_TYPE = "disulf"
 
-# The symmetry operator that leaves an atom where the file puts it. The
-# _struct_conn record of a partner without an operator uses this one.
-IDENTITY_SYMMETRY_OPERATOR = "1_555"
-
 # The decimal places an SG occupancy sum is rounded to. Occupancies are
 # deposited to two or three decimals, so a sum that differs from 1 beyond
 # this differs only by floating-point error.
 OCCUPANCY_SUM_DECIMALS = 6
-
-# How a pair was found in one model. The names are those the planned metal-site
-# table uses for the same two sources, so later site tables can share them.
-DETECTED_BY_RECORD = "struct_conn"
-DETECTED_BY_DISTANCE = "distance"
-DETECTED_BY_RECORD_AND_DISTANCE = "struct_conn_and_distance"
-DETECTION_METHODS: tuple[str, ...] = (
-    DETECTED_BY_RECORD,
-    DETECTED_BY_DISTANCE,
-    DETECTED_BY_RECORD_AND_DISTANCE,
-)
 
 # Why a value of a row is missing, or ok. A row is ok, or takes the first gap
 # that applies, in the order listed after ok, so the most fundamental gap is
@@ -105,16 +90,11 @@ DISULFIDE_STATUS_FAILED = "failed"
 __all__ = [
     "BETA_CARBON_ATOM_NAME",
     "CYSTEINE_RESIDUE_NAME",
-    "DETECTED_BY_DISTANCE",
-    "DETECTED_BY_RECORD",
-    "DETECTED_BY_RECORD_AND_DISTANCE",
-    "DETECTION_METHODS",
     "DISULFIDE_CONNECTION_TYPE",
     "DISULFIDE_SEARCH_CUTOFF_A",
     "DISULFIDE_STATUS_DEGRADED",
     "DISULFIDE_STATUS_FAILED",
     "DISULFIDE_STATUS_OK",
-    "IDENTITY_SYMMETRY_OPERATOR",
     "METAL_CONTACT_DISTANCE_A",
     "OCCUPANCY_SUM_DECIMALS",
     "PAIR_STATUSES",

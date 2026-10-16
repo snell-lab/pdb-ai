@@ -19,9 +19,6 @@ completes.
 
 from __future__ import annotations
 
-import math
-
-import numpy as np
 import pandas as pd
 
 from ...core import (
@@ -48,8 +45,9 @@ from ...sources.validation.maps import (
     VALIDATION_2FOFC_MAP_PATH,
     VALIDATION_FOFC_MAP_PATH,
 )
+from ..site_geometry import read_cell_parameters
 from .columns import DENSITY_COLUMNS
-from .compute import Cell, compute_structure_density, compute_validation_density
+from .compute import compute_structure_density, compute_validation_density
 from .constants import (
     MAP_MAX_GRID_POINTS,
     MAP_MIN_SAMPLE_RATE,
@@ -62,15 +60,6 @@ from .constants import (
 # Both sources hold maps of X-ray entries only. PDB-Redo re-refines no other
 # technique, and the wwPDB computes validation maps for no other.
 _DENSITY_TECHNIQUES = frozenset({"x_ray_diffraction"})
-
-_CELL_ITEMS = (
-    "_cell.length_a",
-    "_cell.length_b",
-    "_cell.length_c",
-    "_cell.angle_alpha",
-    "_cell.angle_beta",
-    "_cell.angle_gamma",
-)
 
 _WARNING_PREFIX = "Density: "
 
@@ -86,28 +75,6 @@ def _map_source_dependencies(options: EngineOptions) -> tuple[str, ...]:
     if density_source_selected(options, DENSITY_SOURCE_WWPDB):
         needed += _WWPDB_ENGINES
     return needed
-
-
-def deposited_cell(atoms: pd.DataFrame) -> Cell | None:
-    """Return the deposited unit cell the atom table records, or None.
-
-    None stands for an atom table without the six cell items, or with a value
-    among them that is not a positive number.
-    """
-    if atoms.empty or any(item not in atoms.columns for item in _CELL_ITEMS):
-        return None
-    values = (
-        pd.to_numeric(
-            pd.Series([atoms[item].iloc[0] for item in _CELL_ITEMS], dtype=object),
-            errors="coerce",
-        )
-        .to_numpy(dtype=np.float64, na_value=np.nan)
-        .tolist()
-    )
-    if not all(math.isfinite(value) and value > 0 for value in values):
-        return None
-    a, b, c, alpha, beta, gamma = values
-    return (a, b, c, alpha, beta, gamma)
 
 
 _SAMPLING_TEXT = (
@@ -261,7 +228,7 @@ class DensityEngine:
         Passes on what reading a reflection file raises.
         """
         atoms = context.atom_dataframe
-        cell = deposited_cell(atoms)
+        cell = read_cell_parameters(atoms)
         frames: list[pd.DataFrame] = []
         warnings: list[str] = []
         messages: list[str] = []
@@ -308,4 +275,4 @@ class DensityEngine:
 
 DENSITY_ENGINE = DensityEngine()
 
-__all__ = ["DENSITY_ENGINE", "DensityEngine", "deposited_cell"]
+__all__ = ["DENSITY_ENGINE", "DensityEngine"]

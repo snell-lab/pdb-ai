@@ -666,9 +666,10 @@ to 6 decimals before it is compared, as in the pair search.
 
 A metal atom is any `_atom_site` row, of any residue and either record type,
 whose `_atom_site.type_symbol` names a metallic element, with finite coordinates
-and an occupancy that is not zero or below. The gemmi library decides which
-elements are metals, and it counts sodium, potassium, magnesium, and calcium
-among them. Case and a charge suffix do not matter, so `ZN`, `Zn`, and `Zn2+`
+and an occupancy that is not zero or below. The metallic elements are the 84
+the metal-site engine counts (see [Metal atoms](#metal-atoms)), which include
+sodium, potassium, magnesium, and calcium. Case and a charge suffix do not
+matter, so `ZN`, `Zn`, and `Zn2+`
 all name zinc. A missing or unreadable symbol names no metal, so the flag is
 `False` on every row of a file that names no elements. Only the atoms of the
 file are read. No symmetry mates are generated, so a metal of a symmetry mate is

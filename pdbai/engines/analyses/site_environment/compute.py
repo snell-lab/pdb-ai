@@ -16,8 +16,9 @@ its standard amino acids and of the modified residues of its polymers, with
 an occupancy that is not zero. They alone give the packing counts, the
 solvent-accessible area, and the depth, so those three are the same for a
 model with or without its ligands and waters, and can be taken from a
-predicted model. Waters are the oxygens of WATER_RESIDUE_NAMES. Atoms of
-the group's own residue are never its partners.
+predicted model. Waters are the oxygens of WATER_COMPONENT_IDS, the
+components the SASA engine reads as water. Atoms of the group's own residue
+are never its partners.
 
 The crystal contacts come from the images of the model under the space
 group of the entry and the translations of its lattice, built here from the
@@ -45,6 +46,7 @@ from ..disulfides.constants import DISULFIDE_SEARCH_CUTOFF_A
 from ..metal_sites.constants import STANDARD_AMINO_ACIDS
 from ..residue_sites.compute import compute_structure_residue_sites
 from ..sasa.classification import protein_radii
+from ..sasa.constants import WATER_COMPONENT_IDS
 from ..sasa.sphere import compute_sasa
 from ..site_geometry import SiteAtoms, read_site_atoms, read_unit_cell
 from .columns import KEY_COLUMNS, SITE_ENVIRONMENT_TABLE
@@ -69,7 +71,6 @@ from .constants import (
     SPHERE_POINT_COUNT,
     SULFUR_HBOND_DISTANCE_A,
     SYMMETRY_SEARCH_RADIUS_A,
-    WATER_RESIDUE_NAMES,
 )
 
 _POLAR_ELEMENTS = ("N", "O", "S")
@@ -155,7 +156,7 @@ class _Model:
     ) -> None:
         self.table = table
         in_model = (table.model == model) & table.usable
-        is_water = np.isin(table.res_name, list(WATER_RESIDUE_NAMES))
+        is_water = np.isin(table.res_name, list(WATER_COMPONENT_IDS))
         in_polymer = (
             ~table.is_hetatm & np.isin(table.res_name, list(STANDARD_AMINO_ACIDS))
         ) | (table.is_hetatm & (table.label_seq != ""))

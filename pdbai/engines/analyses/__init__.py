@@ -37,7 +37,10 @@ beside the atoms it is bonded to and the rest of its component.
 
 cofactors writes a table of flavins, tetrapyrroles, fluorescent-protein
 chromophores, retinal, and p-coumaric acid, with the geometry of each one's
-reactive group. site_geometry.py holds what these three share.
+reactive group. site_geometry.py holds what these three share, and the
+reading of the unit cell and space group that every engine needing them
+shares. struct_conn.py reads the deposited _struct_conn records for the
+disulfide and metal-site engines.
 
 None of the eight fetches anything. They read the structure a source engine
 parsed, or an uploaded file. PDB-Redo's model and reflection file reach

@@ -319,15 +319,15 @@ def compute_structure_sasa(
     """Return the SASA columns, status, and warnings of one structure's table.
 
     ``accuracy_mode`` and ``n_sphere_points`` choose the sphere grid, as in
-    resolve_sphere_point_count. The two include flags decide whether
-    experimental additives and unknown non-polymers occlude the bound
-    context. ``structure_context`` is recorded but not applied. An empty
-    table, or one with no protein atom to compute, gives a failed result
-    rather than an error.
+    resolve_sphere_point_count, and are taken as the engine's options have
+    checked them. The two include flags decide whether experimental
+    additives and unknown non-polymers occlude the bound context.
+    ``structure_context`` is recorded but not applied. An empty table, or one
+    with no protein atom to compute, gives a failed result rather than an
+    error.
 
-    Raises ValueError for an unknown accuracy mode or a point count that is
-    not a positive integer. It also raises ValueError when the table holds a
-    coordinate, an occupancy, or a flag that cannot be read.
+    Raises ValueError when the table holds a coordinate, an occupancy, or a
+    flag that cannot be read, and when compute_sasa refuses the point count.
     """
     mode, point_count = resolve_sphere_point_count(accuracy_mode, n_sphere_points)
     columns = _all_missing_columns(atom_dataframe.index)

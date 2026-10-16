@@ -9,7 +9,6 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from pdbai.engines.analyses.metal_sites import METAL_SITE_ENGINE
 from pdbai.engines.analyses.metal_sites import reference as reference_module
 from pdbai.engines.analyses.metal_sites.columns import (
     METAL_BONDS_TABLE,
@@ -25,12 +24,13 @@ from pdbai.engines.analyses.metal_sites.compute import (
 )
 from pdbai.engines.analyses.metal_sites.constants import (
     BOND_STATUSES,
-    DETECTION_METHODS,
     DONOR_AMINO_ACID,
     DONOR_WATER,
     FIRST_SPHERE_TOLERANCE_A,
     METAL_ELEMENTS,
 )
+from pdbai.engines.analyses.metal_sites.engine import METAL_SITE_ENGINE
+from pdbai.engines.analyses.struct_conn import DETECTION_METHODS
 from pdbai.engines.catalog import get_engine_registry
 from pdbai.engines.compatibility import require_compatible_options
 from pdbai.engines.core import (

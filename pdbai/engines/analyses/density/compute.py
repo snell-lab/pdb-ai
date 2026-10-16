@@ -186,14 +186,12 @@ _COLUMN_ORDER = (
 )
 
 
-def _without_maps(
-    index: pd.Index, status: str, warning: str | None = None
-) -> DensityComputation:
+def _without_maps(index: pd.Index, status: str, warning: str) -> DensityComputation:
     return DensityComputation(
         columns=_empty_columns(index, status),
         map_status=status,
         sample_rate=None,
-        warnings=() if warning is None else (warning,),
+        warnings=(warning,),
     )
 
 

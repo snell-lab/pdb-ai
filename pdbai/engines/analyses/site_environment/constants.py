@@ -44,8 +44,6 @@ EXPOSED_ATOM_AREA_A2 = 1.0
 # group farther than this from every symmetry mate has no nearest distance.
 SYMMETRY_SEARCH_RADIUS_A = 15.0
 
-# The components read as water.
-WATER_RESIDUE_NAMES: frozenset[str] = frozenset({"HOH", "DOD", "H2O", "WAT"})
 
 # The nitrogens that carry a positive charge at neutral pH, or may: the
 # amine of Lys, the guanidinium of Arg, and the imidazole of His, whose
@@ -128,5 +126,4 @@ __all__ = [
     "SPHERE_POINT_COUNT",
     "SULFUR_HBOND_DISTANCE_A",
     "SYMMETRY_SEARCH_RADIUS_A",
-    "WATER_RESIDUE_NAMES",
 ]

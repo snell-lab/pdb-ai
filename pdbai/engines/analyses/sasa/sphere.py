@@ -43,18 +43,12 @@ def resolve_sphere_point_count(
     """Return the accuracy mode and the sphere-point count it stands for.
 
     An explicit ``n_sphere_points`` overrides ``accuracy_mode``. The mode is
-    then reported as "custom" and is not checked.
-
-    Raises ValueError for a mode not in SASA_ACCURACY_POINT_COUNTS or a point
-    count that is not a positive integer.
+    then reported as "custom". Neither is checked here. The engine's options
+    admit only a mode of SASA_ACCURACY_POINT_COUNTS and a positive count, and
+    compute_sasa refuses a count that is not a positive integer.
     """
     if n_sphere_points is not None:
-        return "custom", positive_int(n_sphere_points, "sphere point count")
-    if accuracy_mode not in SASA_ACCURACY_POINT_COUNTS:
-        allowed = ", ".join(sorted(SASA_ACCURACY_POINT_COUNTS))
-        raise ValueError(
-            f"Unknown SASA accuracy mode {accuracy_mode!r}; expected {allowed}."
-        )
+        return "custom", n_sphere_points
     return accuracy_mode, SASA_ACCURACY_POINT_COUNTS[accuracy_mode]
 
 

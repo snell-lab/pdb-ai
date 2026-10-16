@@ -1,6 +1,10 @@
 """The radii, donor rules, elements, and vocabularies of the metal-site tables.
 
-Every threshold the engine uses is here beside its basis. The search radius
+Every threshold the engine uses is here beside its basis, but for the
+special-position cut-off, which site_geometry.py holds for every engine
+that tests for a special position, and the identity operator and detection
+methods, which struct_conn.py holds for every engine that reads deposited
+records. The search radius
 and the first-sphere tolerance are written into the table descriptions and
 the run summary, so every run records the ones it used. The rules are those
 of Alchemy's coordination module, and each should be checked against its
@@ -21,10 +25,6 @@ CANDIDATE_SEARCH_RADIUS_A = 4.0
 # coordination-group definition of Harding (2004, Acta Cryst. D60, 849-859).
 FIRST_SPHERE_TOLERANCE_A = 0.75
 
-# Two images of one atom closer than this in Å are one atom on a special
-# position, the cut-off gemmi's contact search uses for the same purpose.
-SPECIAL_POSITION_CUTOFF_A = 0.8
-
 # The radius in Å within which other metal atoms of the file are counted
 # around a metal. It gives context and asserts no metal–metal bond.
 NEARBY_METAL_RADIUS_A = 6.0
@@ -32,9 +32,6 @@ NEARBY_METAL_RADIUS_A = 6.0
 # A pad for comparing distances against a radius, far below any resolvable
 # displacement, so an atom exactly on a radius is inside it.
 DISTANCE_EPSILON_A = 1e-6
-
-# The symmetry operator that leaves an atom where the file puts it.
-IDENTITY_SYMMETRY_OPERATOR = "1_555"
 
 # Elements counted as metals, the list of Alchemy 1.0.0.
 METAL_ELEMENTS: frozenset[str] = frozenset(
@@ -176,16 +173,6 @@ REFERENCE_C_TERMINUS = "CTERM"
 # The _struct_conn.conn_type_id of a deposited metal coordination bond.
 METAL_CONNECTION_TYPE = "metalc"
 
-# How a bond was found. The names are those the disulfides table uses.
-DETECTED_BY_RECORD = "struct_conn"
-DETECTED_BY_DISTANCE = "distance"
-DETECTED_BY_RECORD_AND_DISTANCE = "struct_conn_and_distance"
-DETECTION_METHODS = (
-    DETECTED_BY_RECORD,
-    DETECTED_BY_DISTANCE,
-    DETECTED_BY_RECORD_AND_DISTANCE,
-)
-
 # The kind of component a metal atom belongs to. A cluster and a heme are
 # components the catalog lists as such, an ion is a component of one atom,
 # and other is any other component that holds a metal.
@@ -254,10 +241,6 @@ __all__ = [
     "BOND_STATUS_OK",
     "CANDIDATE_SEARCH_RADIUS_A",
     "C_TERMINAL_DONOR_ATOMS",
-    "DETECTED_BY_DISTANCE",
-    "DETECTED_BY_RECORD",
-    "DETECTED_BY_RECORD_AND_DISTANCE",
-    "DETECTION_METHODS",
     "DISTANCE_EPSILON_A",
     "DONOR_AMINO_ACID",
     "DONOR_CLASSES",
@@ -268,7 +251,6 @@ __all__ = [
     "DONOR_WATER",
     "FIRST_SPHERE_TOLERANCE_A",
     "HYDROGEN_ELEMENTS",
-    "IDENTITY_SYMMETRY_OPERATOR",
     "INFERRED_DONOR_ATOMS",
     "METAL_CONNECTION_TYPE",
     "METAL_ELEMENTS",
@@ -300,6 +282,5 @@ __all__ = [
     "SITE_STATUSES",
     "SITE_STATUS_NO_DONORS",
     "SITE_STATUS_OK",
-    "SPECIAL_POSITION_CUTOFF_A",
     "STANDARD_AMINO_ACIDS",
 ]

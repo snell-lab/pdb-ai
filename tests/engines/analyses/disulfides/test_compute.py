@@ -331,8 +331,6 @@ def test_the_fixture_gives_the_rows_its_docstring_works_out(
 
     table = computation.table
     assert list(table.columns) == list(DISULFIDES_TABLE.column_names)
-    for column in DISULFIDES_TABLE.columns:
-        assert table[column.name].dtype == column.dtype, column.name
     rows = [list(row) for row in table[_MEASURE_COLUMNS].itertuples(index=False)]
     assert rows == [_approx_row(row) for row in _EXPECTED_ROWS]
     assert len(table.columns) == 29
@@ -908,8 +906,7 @@ def test_a_metal_contact_off_an_axis_is_included_despite_rounding_error(
         ("FE", True),
         ("Fe3+", True),
         ("NI", True),
-        # gemmi does not read a one-letter symbol before a digit, so the
-        # engine hands it the letters alone.
+        # A one-letter symbol is read apart from the digit of its charge.
         ("K1+", True),
         # Sulfur, selenium, and hydrogen and its isotope are not metals.
         ("S", False),
@@ -949,7 +946,6 @@ def test_a_file_that_names_no_elements_flags_nothing(tmp_path: Path) -> None:
     )
 
     assert computation.table["metal_bridged"].tolist() == [False]
-    assert computation.table["metal_bridged"].dtype == "boolean"
     assert computation.warnings == ()
 
 
@@ -1385,9 +1381,18 @@ def test_the_fixture_rows_pass_the_table_checks(disulfide_cif: Path) -> None:
 
     validated = validate_tables(
         "disulfides", (DISULFIDES_TABLE,), {"disulfides": table}
-    )
+    )["disulfides"]
 
-    pd.testing.assert_frame_equal(validated["disulfides"], table)
+    # The host casts each column to its declared type and changes no value.
+    for column in DISULFIDES_TABLE.columns:
+        assert validated[column.name].dtype == column.dtype, column.name
+    pd.testing.assert_frame_equal(
+        validated,
+        table.astype(
+            {column.name: column.dtype for column in DISULFIDES_TABLE.columns}
+        ),
+    )
+    assert not validated["metal_bridged"].isna().any()
     broken = table.assign(pair_status="broken")
     with pytest.raises(ValueError, match="undeclared categories"):
         validate_tables("disulfides", (DISULFIDES_TABLE,), {"disulfides": broken})
@@ -1437,8 +1442,10 @@ def test_cysteines_with_a_cb_but_no_sg_are_counted_once_per_model(
     computation = _compute(tmp_path, atoms)
 
     assert computation.table.empty
+    assert computation.link.isna().all()
     assert computation.cysteine_without_sg_count == 3
     assert computation.status == "ok"
+    assert computation.warnings == ()
 
 
 @pytest.mark.parametrize(
