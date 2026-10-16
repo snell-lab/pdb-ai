@@ -8,4 +8,5 @@ scipy
 urllib3>=1.26
 
 # This is the only BDamage, Bnet, and packing-density implementation used here.
-rabdam @ git+https://github.com/snell-lab/rabdam-custom.git@main
+# Pinned to the v1.0.0 release (commit 6af0ce314f155a0b5380c9b67e958e8ff376cd06).
+rabdam @ git+https://github.com/snell-lab/rabdam-custom.git@v1.0.0

@@ -144,8 +144,8 @@ above 5 MGy, a cut-off PDB-AI chose.
 
 PDB-AI computes `bdamage`, `packing_density`, `bnet`, and `bnet_percentile`
 in-process. It uses
-[snell-lab/rabdam-custom](https://github.com/snell-lab/rabdam-custom) 1.0.0 from
-its `main` branch. This package is an accuracy-focused rewrite of RABDAM 2
+[snell-lab/rabdam-custom](https://github.com/snell-lab/rabdam-custom), pinned to
+its v1.0.0 release. This package is an accuracy-focused rewrite of RABDAM 2
 (Shelley and Garman, 2022).
 
 RABDAM is off by default. Use `--include-rabdam` to enable it. When enabled,
