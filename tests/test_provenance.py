@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -163,7 +164,11 @@ def test_session_records_the_origin_url_without_credentials(
 # A remote URL can hold bytes the locale's encoding cannot decode. The
 # surrogate escape passes the raw byte 0xFF to git, and no UTF-8 decoder
 # accepts that byte. What replaces it depends on the locale, so only the rest
-# of the URL is checked.
+# of the URL is checked. Windows passes arguments to git as UTF-16, so no
+# such byte can reach git there.
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Windows cannot pass git an undecodable byte"
+)
 def test_session_reads_git_output_the_locale_cannot_decode(
     checkout: Path,
 ) -> None:

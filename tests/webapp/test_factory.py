@@ -131,7 +131,7 @@ def test_download_route_serves_only_from_dataset_directory(
     client = _client(tmp_path, monkeypatch)
     filtered = f"result_filtered_{'a' * 32}.csv"
     dataset = tmp_path / "workspace" / "datasets" / filtered
-    dataset.write_text("pdb_id\n1ABC\n", encoding="utf-8")
+    dataset.write_bytes(b"pdb_id\n1ABC\n")
     outside = tmp_path / "secret.txt"
     outside.write_text("secret", encoding="utf-8")
 
@@ -300,7 +300,7 @@ def test_downloads_serve_only_filtered_tables(
     filtered = f"upload_filtered_{'a' * 32}.csv"
     folder = f"sub_filtered_{'b' * 32}.csv"
     link = f"link_filtered_{'c' * 32}.csv"
-    (datasets / filtered).write_text("pdb_id\n1ABC\n", encoding="utf-8")
+    (datasets / filtered).write_bytes(b"pdb_id\n1ABC\n")
     (datasets / f".{filtered}.abc.tmp").write_text("partial", encoding="utf-8")
     (datasets / "result.csv").write_text("pdb_id\n", encoding="utf-8")
     (datasets / "notes.txt").write_text("notes", encoding="utf-8")

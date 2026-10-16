@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from typing import cast
@@ -170,13 +171,21 @@ _AN_HOUR_AND_A_BIT_AGO = time.time() - 60 * 60 - 60
 
 
 def _age(path: Path) -> None:
+    # A link is aged itself, not its target. Only regular files and
+    # directories reach here on Windows, where a link's time cannot be set.
     os.utime(
         path,
         (_AN_HOUR_AND_A_BIT_AGO, _AN_HOUR_AND_A_BIT_AGO),
-        follow_symlinks=False,
+        follow_symlinks=not path.is_symlink(),
     )
 
 
+_SETS_LINK_TIMES = pytest.mark.skipif(
+    sys.platform == "win32", reason="Windows cannot set a symlink's own time"
+)
+
+
+@_SETS_LINK_TIMES
 def test_remove_stale_files_leaves_directories_and_removes_dangling_links(
     tmp_path: Path,
 ) -> None:
@@ -198,6 +207,7 @@ def test_remove_stale_files_leaves_directories_and_removes_dangling_links(
     assert not stale.exists()
 
 
+@_SETS_LINK_TIMES
 def test_remove_stale_files_removes_an_old_link_but_not_its_target(
     tmp_path: Path,
 ) -> None:

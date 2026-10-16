@@ -229,7 +229,7 @@ def test_run_file_route_serves_only_published_outputs(
     directory = run_state.directory
     directory.dataset_path_for("residues").write_text("x\n", encoding="utf-8")
     directory.report_path.write_text("pdb_id\n", encoding="utf-8")
-    directory.summary_path.write_text("# Summary\n", encoding="utf-8")
+    directory.summary_path.write_bytes(b"# Summary\n")
     # These files exist, so each 404 below comes from the rule on what a run
     # publishes and not from a missing file.
     directory.dataset_path_for("flat").write_text("x\n", encoding="utf-8")
@@ -282,7 +282,7 @@ def test_download_all_includes_machine_readable_provenance(
     state.directory.report_path.write_text(
         "pdb_id,success\n1ABC,True\n", encoding="utf-8"
     )
-    state.directory.summary_path.write_text("# Summary\n", encoding="utf-8")
+    state.directory.summary_path.write_bytes(b"# Summary\n")
 
     response = client.get("/api/runs/publication-run/download-all")
 
@@ -391,12 +391,8 @@ def test_each_run_links_to_the_files_in_its_own_run_directory(
     payloads = {}
     for run_id, marker in (("run-a", "A"), ("run-b", "B")):
         directory = _run(tmp_path, run_id).directory
-        directory.dataset_path_for("flat").write_text(
-            f"pdb_id\n{marker}\n", encoding="utf-8"
-        )
-        directory.report_path.write_text(
-            f"pdb_id,success\n{marker},True\n", encoding="utf-8"
-        )
+        directory.dataset_path_for("flat").write_bytes(f"pdb_id\n{marker}\n".encode())
+        directory.report_path.write_bytes(f"pdb_id,success\n{marker},True\n".encode())
         _spawn(service, run_id)
         _wait_for_job(service, run_id)
         status = client.get(f"/api/runs/{run_id}/status").get_json()
