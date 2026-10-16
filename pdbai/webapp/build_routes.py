@@ -52,7 +52,7 @@ def register_build_routes(app: Flask, service: JobService) -> None:
         payload = json_body()
         try:
             pdb_ids = parse_pdb_ids(payload.get("pdbIds"))
-            settings = settings_from_request(payload, source="download")
+            settings = settings_from_request(payload)
             resume = parse_flag(payload.get("resume"), "resume")
         except ValueError as exception:
             bad_request(exception)

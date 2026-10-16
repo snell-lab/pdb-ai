@@ -36,7 +36,7 @@ def _file_url(run_id: str) -> str:
 
 def _options(payload: dict[str, object]) -> EngineOptions:
     """Return the engine options a download request with ``payload`` gives."""
-    return settings_from_request(payload, source="download").options
+    return settings_from_request(payload).options
 
 
 def _wait_for_job(service: JobService, run_id: str) -> None:

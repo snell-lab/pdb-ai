@@ -7,9 +7,8 @@ import pytest
 from pytest import MonkeyPatch
 
 from pdbai.engines.catalog import get_engine_registry
-from pdbai.engines.core import DEFAULT_DATASET_SHAPE, DatasetSource, EngineOptions
+from pdbai.engines.core import DEFAULT_DATASET_SHAPE, EngineOptions
 from pdbai.profiles import get_profile
-from pdbai.webapp import options as options_module
 from pdbai.webapp.options import (
     PDB_ID_DELIMITERS,
     engine_options_from_settings,
@@ -25,7 +24,7 @@ from webapp.conftest import _client, _options
 
 
 def _settings(payload: dict[str, object]) -> object:
-    return settings_from_request(payload, source="download")
+    return settings_from_request(payload)
 
 
 def _default_settings() -> dict[str, object]:
@@ -217,14 +216,13 @@ def test_a_profile_applies_its_column_filter_to_api_requests_too() -> None:
     # The CLI and the browser apply a profile's column filter. An API client
     # that sends only the profile gets the same filter from the server.
     profile = get_profile("ml_minimal")
-    settings = settings_from_request({"profileId": "ml_minimal"}, source="download")
+    settings = settings_from_request({"profileId": "ml_minimal"})
     explicit = settings_from_request(
         {
             "profileId": "ml_minimal",
             "columnFilterMode": "exclude",
             "columnFilterList": "x",
         },
-        source="download",
     )
 
     assert settings.column_filter_mode == profile.filter_mode
@@ -236,9 +234,9 @@ def test_a_profile_applies_its_column_filter_to_api_requests_too() -> None:
 
 def test_column_filter_mode_ignores_case_and_a_blank_one_means_none() -> None:
     spelled = settings_from_request(
-        {"columnFilterMode": " Exclude ", "columnFilterList": "x"}, source="download"
+        {"columnFilterMode": " Exclude ", "columnFilterList": "x"}
     )
-    blank = settings_from_request({"columnFilterMode": ""}, source="download")
+    blank = settings_from_request({"columnFilterMode": ""})
 
     assert spelled.column_filter_mode == "exclude"
     assert blank.column_filter_mode is None
@@ -247,7 +245,6 @@ def test_column_filter_mode_ignores_case_and_a_blank_one_means_none() -> None:
 def test_column_filter_list_may_be_a_list_of_text() -> None:
     settings = settings_from_request(
         {"columnFilterMode": "include", "columnFilterList": ["a", " b;c ", ""]},
-        source="download",
     )
 
     assert settings.column_filter_list == ("a", "b", "c")
@@ -331,8 +328,8 @@ def test_profile_id_refuses_a_value_that_names_no_profile(
 
 
 def test_profile_id_ignores_case_and_a_blank_one_means_no_profile() -> None:
-    spelled = settings_from_request({"profileId": " ML_Minimal "}, source="download")
-    blank = settings_from_request({"profileId": " "}, source="download")
+    spelled = settings_from_request({"profileId": " ML_Minimal "})
+    blank = settings_from_request({"profileId": " "})
 
     assert spelled.profile == get_profile("ml_minimal")
     assert blank.profile is None
@@ -401,29 +398,6 @@ def test_engine_options_from_settings_reads_an_absent_source_as_download() -> No
     assert engine_options_from_settings(settings) == EngineOptions.from_settings_dict(
         settings
     )
-
-
-@pytest.mark.parametrize(
-    ("recorded", "expected"),
-    [
-        ({}, "download"),
-        ({"source": "download"}, "download"),
-        ({"source": "upload"}, "upload"),
-    ],
-)
-def test_engine_options_from_settings_checks_options_for_the_recorded_source(
-    monkeypatch: MonkeyPatch, recorded: dict[str, object], expected: str
-) -> None:
-    checked: list[DatasetSource] = []
-
-    def record_source(_options: EngineOptions, *, source: DatasetSource) -> None:
-        checked.append(source)
-
-    monkeypatch.setattr(options_module, "require_compatible_options", record_source)
-
-    engine_options_from_settings({**_default_settings(), **recorded})
-
-    assert checked == [expected]
 
 
 @pytest.mark.parametrize("source", ["UPLOAD", None, 5])

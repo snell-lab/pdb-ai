@@ -321,7 +321,7 @@ def register_upload_routes(app: Flask, service: JobService) -> None:
         if max_files is not None and len(uploads) > max_files:
             bad_request(f"At most {max_files} files per upload; got {len(uploads)}.")
         try:
-            settings = settings_from_request(request.form, source="upload")
+            settings = settings_from_request(request.form)
             resume = parse_flag(request.form.get("resume"), "resume")
         except ValueError as exception:
             bad_request(exception)

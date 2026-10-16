@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .catalog import get_engine_registry
-from .core import DatasetSource, EngineOptions, get_technique
+from .core import EngineOptions, get_technique
 
 
 @dataclass(frozen=True)
@@ -178,14 +178,11 @@ def validate_options(options: EngineOptions) -> None:
         declared[name].check(value)
 
 
-def require_compatible_options(
-    options: EngineOptions, *, source: DatasetSource = "download"
-) -> None:
+def require_compatible_options(options: EngineOptions) -> None:
     """Raise ValueError as validate_options does, or for unsupported engines.
 
     The message joins every message technique_conflicts returns for the
-    run. ``source`` is the dataset source the run builds from, on which
-    neither check depends at present.
+    run.
     """
     validate_options(options)
     messages = technique_conflicts(options)

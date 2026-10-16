@@ -221,9 +221,7 @@ def _parse_engine_setting(option: OptionSpec, value: object) -> OptionValue:
     return parse_positive_int(value, key)
 
 
-def settings_from_request(
-    request_fields: Mapping[str, object], *, source: DatasetSource
-) -> RunSettings:
+def settings_from_request(request_fields: Mapping[str, object]) -> RunSettings:
     """Return validated run settings from a JSON build request or upload form.
 
     Each engine setting is read under its declared camelCase key. A setting
@@ -272,7 +270,6 @@ def settings_from_request(
         profile_id=profile_id,
         column_filter_mode=column_filter_mode,
         column_filter_list=column_filter_list or None,
-        source=source,
     )
 
 
@@ -282,14 +279,11 @@ def engine_options_from_settings(settings: Mapping[str, object]) -> EngineOption
     The ``source`` key of ``settings`` says where the run's structures came
     from. A manifest without it describes a download. Any value other than
     upload or download raises ValueError. So do settings that do not rebuild
-    into options, and options the engines refuse for that source. A caller
-    therefore has one error to catch for an unusable manifest.
+    into options, and options the engines refuse. A caller therefore has one
+    error to catch for an unusable manifest.
     """
     recorded_source = settings.get("source", "download")
-    matching: list[DatasetSource] = [
-        known for known in _DATASET_SOURCES if recorded_source == known
-    ]
-    if not matching:
+    if not any(recorded_source == known for known in _DATASET_SOURCES):
         raise ValueError(
             f"source must be one of {', '.join(_DATASET_SOURCES)}; "
             f"got {recorded_source!r}."
@@ -300,7 +294,7 @@ def engine_options_from_settings(settings: Mapping[str, object]) -> EngineOption
         # from_settings_dict raises TypeError for a value of the wrong type. To
         # the caller, that is one more way a manifest is unusable.
         raise ValueError(str(exception)) from exception
-    require_compatible_options(options, source=matching[0])
+    require_compatible_options(options)
     return options
 
 

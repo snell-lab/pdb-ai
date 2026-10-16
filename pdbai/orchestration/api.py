@@ -92,7 +92,7 @@ def _checked_request(
 
     registry = get_engine_registry()
     options = registry.with_defaults(engine_options or EngineOptions())
-    require_compatible_options(options, source=source)
+    require_compatible_options(options)
     registry.preflight(options, source)
 
     working_directory = Path(working_directory).expanduser().resolve()

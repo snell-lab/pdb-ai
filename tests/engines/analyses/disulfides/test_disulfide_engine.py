@@ -212,8 +212,7 @@ def test_the_engine_may_run_on_neutron_structures() -> None:
         EngineOptions(technique="neutron_diffraction", values=_ON)
     )
 
-    require_compatible_options(options, source="upload")
-    require_compatible_options(options, source="download")
+    require_compatible_options(options)
 
 
 @pytest.mark.parametrize("dataset_shape", ["flat", "star_schema"])

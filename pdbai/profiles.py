@@ -35,7 +35,6 @@ from .engines.core import (
     PROFILE_RESEARCH_READY,
     PROFILE_STRUCTURE_QUALITY,
     DatasetShapeName,
-    DatasetSource,
     EngineOptions,
     OptionValue,
 )
@@ -305,14 +304,13 @@ def resolve_run_settings(
     profile_id: str | None = None,
     column_filter_mode: ColumnFilterMode | None = None,
     column_filter_list: Iterable[str] | None = None,
-    source: DatasetSource = "download",
 ) -> RunSettings:
     """Build a run's engine options and column filter, and check them.
 
     ``values`` maps option names to the engine settings a user gave. A
     setting that is missing or None takes its declared default. The profile
     is then applied as apply_profile describes. Last, the result is checked
-    against the technique and against ``source``, the dataset source.
+    against the technique.
 
     ValueError is raised for an unknown technique, X-ray source, dataset
     shape, or profile. It is also raised for an undeclared setting or an
@@ -333,7 +331,7 @@ def resolve_run_settings(
         column_filter_mode=column_filter_mode,
         column_filter_list=column_filter_list,
     )
-    require_compatible_options(settings.options, source=source)
+    require_compatible_options(settings.options)
     return settings
 
 
