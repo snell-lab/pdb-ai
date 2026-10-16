@@ -333,7 +333,7 @@ class RunState:
                     "start a new run instead of mixing its partials with new ones."
                 )
             # An entry that stopped before it was done may have recorded the
-            # columns it offered, which belong to the schema the run now leaves.
+            # columns it offered, which belong to the schema the run leaves.
             manifest.pop("filter_available_columns", None)
             manifest.pop("engine_tables", None)
             manifest["schema_fingerprint"] = schema_fingerprint

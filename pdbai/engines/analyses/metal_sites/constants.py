@@ -1,14 +1,13 @@
 """The radii, donor rules, elements, and vocabularies of the metal-site tables.
 
 Every threshold the engine uses is here beside its basis, but for the
-special-position cut-off, which site_geometry.py holds for every engine
-that tests for a special position, and the identity operator and detection
-methods, which struct_conn.py holds for every engine that reads deposited
-records. The search radius
-and the first-sphere tolerance are written into the table descriptions and
-the run summary, so every run records the ones it used. The rules are those
-of Alchemy's coordination module, and each should be checked against its
-source before it is cited.
+special-position cut-off, which site_geometry.py holds for every engine that
+tests for a special position, and the identity operator and detection methods,
+which struct_conn.py holds for every engine that reads deposited records. The
+search radius and the first-sphere tolerance are written into the table
+descriptions and the run summary, so every run records the ones it used. The
+rules are those of Alchemy's coordination module, and each should be checked
+against its source before it is cited.
 """
 
 from __future__ import annotations

@@ -1,11 +1,12 @@
 """Black-box tests of disulfide edge cases that test_compute.py does not cover.
 
-The cases are a symmetry record alone, a record in a file numbered by its
-label fields, unreadable coordinates on one conformer, occupancies that sum
-above one, a B-factor ratio of exactly one, missing model numbers and
-alternate location labels, labels of more than one character, hydrogen and deuterium conformers, and records that
-tell residues apart by insertion code. Each expectation follows from the
-module docstring of compute.py, not from the implementation.
+The cases are a symmetry record alone, a record in a file numbered by its label
+fields, unreadable coordinates on one conformer, occupancies that sum above
+one, a B-factor ratio of exactly one, missing model numbers and alternate
+location labels, labels of more than one character, hydrogen and deuterium
+conformers, and records that tell residues apart by insertion code. Each
+expectation follows from the module docstring of compute.py, not from the
+implementation.
 
 Each test writes a small mmCIF file, parses it as the host does, and hands the
 atom table and the flat dictionary to compute_structure_disulfides. Author

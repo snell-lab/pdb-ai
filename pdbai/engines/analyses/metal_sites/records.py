@@ -3,7 +3,7 @@
 read_metal_records reads the _struct_conn category of the flat mmCIF
 dictionary through struct_conn.py and keeps the rows whose connection type
 is metalc, in any case. Each text is read as clean_string_series reads atom
-identity: stripped, and empty when the file writes a placeholder.
+identity, so it is stripped, and empty when the file writes a placeholder.
 
 A kept record holds both partners' addresses and whether the two take the
 same symmetry operator. A partner without an operator takes the identity.

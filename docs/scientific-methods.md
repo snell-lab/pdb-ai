@@ -100,18 +100,17 @@ text, `LIKELY RESIDUAL` for all 167 entries that state one. Each of them lists
 TLS groups. The archive marks no entry as holding whole B-factors, so a missing
 flag does not say that it does.
 
-**Anisotropic records.** `anisotropic_atom_fraction` is the share of the
-file's atom sites that have a record in `_atom_site_anisotrop`. Atoms of
-element H, D, or T are left out of both counts, since a refinement that gives every
-other atom a tensor often still lets its hydrogens ride on their parents with
-one isotropic value. The atom sites are those of the file, every alternate
-conformer and every model, so the fraction does not depend on the conformer the
-atom table keeps and can differ slightly from the share of the table's rows
-that have `u11`. A record is joined to its atom as the `u11` to `u23` columns
-join it, so a record id given to two rows counts for no atom. 9,227 entries
-(52.1 %) have no anisotropic record and a fraction of 0, which is how an
-isotropic refinement is deposited. 6,610 (37.3 %) have a fraction of 0.9 or
-more.
+**Anisotropic records.** `anisotropic_atom_fraction` is the share of the file's
+atom sites that have a record in `_atom_site_anisotrop`. Atoms of element H, D,
+or T are left out of both counts, since a refinement that gives every other atom
+a tensor often still lets its hydrogens ride on their parents with one isotropic
+value. The atom sites are those of the file, every alternate conformer and every
+model, so the fraction does not depend on the conformer the atom table keeps and
+can differ slightly from the share of the table's rows that have `u11`. A record
+is joined to its atom as the `u11` to `u23` columns join it, so a record id
+given to two rows counts for no atom. 9,227 entries (52.1 %) have no anisotropic
+record and a fraction of 0, which is how an isotropic refinement is deposited.
+6,610 (37.3 %) have a fraction of 0.9 or more.
 
 The fraction does not by itself show that each atom was refined
 anisotropically. A program can write, for every atom of a TLS group, the

@@ -1,23 +1,23 @@
-"""The deposited _struct_conn records of a structure file, as the site engines read them.
+"""The deposited _struct_conn records of a structure file, as site engines read them.
 
 read_struct_conn reads the _struct_conn category of the flat mmCIF
 dictionary, never the atom table. The parser repeats a one-row category on
 every atom, but a record has no positional link to the atoms, so a structure
 with one record would otherwise look like a structure with one per atom.
 
-Each text is read as clean_string_series reads atom identity: stripped, and
-empty when the file writes a placeholder. The connection type is lower-cased,
-so an engine matches it in any case. A partner names its residue by the
-author component, upper-cased, or by the label component when that is
-missing, and its atom by the label atom name, or by the author one. A
-partner without a symmetry operator takes the identity, and an operator is
-compared without its underscore, so 1_555 and 1555 agree. Partners under one
-operator are atoms of one molecule, since one operator applied to both
-leaves their distance unchanged. Partners under different operators join the
-molecule to a symmetry mate.
+Each text is read as clean_string_series reads atom identity, so it is
+stripped, and empty when the file writes a placeholder. The connection type is
+lower-cased, so an engine matches it in any case. A partner names its residue
+by the author component, upper-cased, or by the label component when that is
+missing, and its atom by the label atom name, or by the author one. A partner
+without a symmetry operator takes the identity, and an operator is compared
+without its underscore, so 1_555 and 1555 agree. Partners under one operator
+are atoms of one molecule, since one operator applied to both leaves their
+distance unchanged. Partners under different operators join the molecule to a
+symmetry mate.
 
 Which records an engine keeps, and what it does with a record to a symmetry
-mate, is the engine's own: the metal-site engine's records.py keeps metalc
+mate, is the engine's own. The metal-site engine's records.py keeps metalc
 records, and the disulfide engine's keeps disulf records between cysteine
 SG atoms. Both name how a site was found by the same three methods, which
 detection_method gives.
@@ -38,8 +38,8 @@ _STRUCT_CONN_PREFIX = "_struct_conn."
 # _struct_conn record of a partner without an operator uses this one.
 IDENTITY_SYMMETRY_OPERATOR = "1_555"
 
-# How a bond or a pair was found: from a deposited record, from distance, or
-# from both. The metal-site and disulfide tables use the same names.
+# Whether a bond or a pair was found from a deposited record, from distance,
+# or from both. The metal-site and disulfide tables use the same names.
 DETECTED_BY_RECORD = "struct_conn"
 DETECTED_BY_DISTANCE = "distance"
 DETECTED_BY_RECORD_AND_DISTANCE = "struct_conn_and_distance"

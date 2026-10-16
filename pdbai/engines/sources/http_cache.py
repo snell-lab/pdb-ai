@@ -11,7 +11,7 @@ remediated or re-refined coordinates all change.
 A cache file that cannot be read counts as missing, so a damaged cache costs
 a download rather than a run. Writes are atomic, so a reader never meets a
 half-written file. A downloaded file must pass the check of its FileFormat
-before it is written: an mmCIF file must open a data block, and an MTZ or
+before it is written. An mmCIF file must open a data block, and an MTZ or
 gzip file must start with its signature. An error page served with status
 200 therefore never replaces a good file, and a cached file is judged by the
 same check before it is reused. When a source answers that it no longer has

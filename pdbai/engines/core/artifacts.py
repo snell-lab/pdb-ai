@@ -9,9 +9,9 @@ so lives through both phases of one structure.
 An engine declares the keys it publishes, and the coordinator refuses any
 other. Nothing declares what an engine reads. An engine that reads another's
 artifact either depends on that engine or runs in a later phase, so that it
-runs after it. A producer may still fail or have nothing to publish, so a reader must treat a missing
-value as an expected case. It can read context.failures to say why the value
-is missing.
+runs after it. A producer may still fail or have nothing to publish, so a
+reader must treat a missing value as an expected case. It can read
+context.failures to say why the value is missing.
 
 The host's own artifacts are the structure file, the entry's normalized
 metadata, and the archive's entry record. The structure file is present once
@@ -31,9 +31,9 @@ from typing import Any, cast
 class ArtifactKey[T]:
     """The name and type of one value an engine or the host publishes.
 
-    The store tells keys apart by name alone, so two keys of one name stand
-    for one value. The description is documentation for
-    engine authors and is not shown anywhere.
+    The store tells keys apart by name alone, so two keys of one name stand for
+    one value. The description is documentation for engine authors and is not
+    shown anywhere.
 
     An empty name raises ValueError. So does a type that is not a class,
     such as list[str], since the store checks each value with isinstance.

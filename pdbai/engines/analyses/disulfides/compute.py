@@ -219,15 +219,15 @@ type _ResiduePair = tuple[_ResidueKey, _ResidueKey]
 class DisulfideComputation:
     """The disulfides of one structure, with its status and warnings.
 
-    ``table`` holds the rows of the disulfides table in their declared
-    columns, which validate_tables casts to their declared types. ``link`` holds the atom link column on the atom
-    table's index. ``status`` is "ok" or "degraded".
-    ``unmatched_record_count`` counts the in-scope records that matched in
-    no model, and ``symmetry_record_count`` the records that join a symmetry
-    mate. ``cysteine_without_sg_count`` counts the cysteines, once per
+    ``table`` holds the rows of the disulfides table in their declared columns,
+    which validate_tables casts to their declared types. ``link`` holds the
+    atom link column on the atom table's index. ``status`` is "ok" or
+    "degraded". ``unmatched_record_count`` counts the in-scope records that
+    matched in no model, and ``symmetry_record_count`` the records that join a
+    symmetry mate. ``cysteine_without_sg_count`` counts the cysteines, once per
     model, that have a CB row but no SG row in any conformer. ``warnings``
-    holds each distinct message once, in the order raised, without the
-    engine's name.
+    holds each distinct message once, in the order raised, without the engine's
+    name.
     """
 
     table: pd.DataFrame
