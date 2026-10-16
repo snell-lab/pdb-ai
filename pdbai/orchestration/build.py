@@ -147,8 +147,6 @@ class DatasetBuild:
         partial_paths = write_partial_csvs(
             tables, self.run_state.directory, result.pdb_id
         )
-        for table, table_dataframe in tables.items():
-            self.run_state.add_canonical_columns(table, list(table_dataframe.columns))
 
         result.state = "done"
         result.engine_table_row_counts = {
@@ -202,8 +200,8 @@ class DatasetBuild:
         every entry it set out to process. Otherwise it is left completed.
         When the run has no done entry, finish raises RunPausedError if the
         build was cancelled and NoDatasetError if not. RuntimeError is raised
-        when assembly runs out of memory. Every error except RunPausedError
-        leaves the run in error, with the message recorded.
+        when assembly runs out of memory. An error is raised without being
+        recorded. The caller that claimed the run leaves it in error.
         """
         run_results = self._run_results()
         return settle_run(

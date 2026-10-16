@@ -34,10 +34,10 @@ from ..engines.core import DatasetSource, EngineOptions
 from ..identifiers import normalize_pdb_id
 from ..integers import positive_int
 from ..json_values import str_list
-from ..results import DatasetBuildResult
+from ..results import DatasetBuildResult, RunPausedError
 from ..runs import (
     ProgressCallback,
-    RunState,
+    error_message,
     open_run,
     published_table_paths,
     validate_output_filename,
@@ -122,17 +122,6 @@ def _checked_request(
     )
 
 
-def _record_run_failure(run_state: RunState, exception: Exception) -> None:
-    # Some exceptions, such as a bare AssertionError, carry no text. The
-    # message then falls back to the type's name, as settle_run's does. The
-    # failure being recorded is the one the caller must see, so a record that
-    # cannot be written, as on a full disk, does not take its place.
-    with suppress(OSError):
-        run_state.set_run_status(
-            "error", error=str(exception) or type(exception).__name__
-        )
-
-
 @contextmanager
 def _claimed_run(
     request: _BuildRequest,
@@ -150,11 +139,12 @@ def _claimed_run(
     with other settings or was written under another column schema. Either
     error leaves the run as it was.
 
-    Settlement records the run's status itself. An exception that stops the
-    build before that is raised as it is, and leaves the run in error with
-    its message. An interruption such as KeyboardInterrupt is not an
-    exception of that kind. It leaves the run running, so the run list shows
-    it as stale.
+    An exception that stops the build, in settlement or before it, is
+    raised as it is, and leaves the run in error with its message. Only
+    RunPausedError, raised by settlement once it has left the run paused,
+    is passed on without that record. An interruption such as
+    KeyboardInterrupt is not an exception of that kind. It leaves the run
+    running, so the run list shows it as stale.
     """
     settings: dict[str, object] = {
         "column_filter_mode": request.column_filter_mode,
@@ -200,11 +190,14 @@ def _claimed_run(
                 column_filter_list=request.column_filter_list,
                 warnings=list(warnings),
             )
+        except RunPausedError:
+            raise
         except Exception as exception:
-            # settle_run sets the status whenever it stops, paused included,
-            # so a run still running failed before settlement.
-            if run_state.manifest().get("run_status") == "running":
-                _record_run_failure(run_state, exception)
+            # The failure being recorded is the one the caller must see, so a
+            # record that cannot be written, as on a full disk, does not take
+            # its place.
+            with suppress(OSError):
+                run_state.set_run_status("error", error=error_message(exception))
             raise
 
 

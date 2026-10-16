@@ -906,9 +906,6 @@ def test_finish_reports_columns_from_every_partial(tmp_path: Path) -> None:
     second = run_state.directory.partials_directory / "2XYZ.csv"
     first.write_text("pdb_id,first_value\n1ABC,1\n", encoding="utf-8")
     second.write_text("pdb_id,later_value\n2XYZ,2\n", encoding="utf-8")
-    # The run recorded only the first partial's columns, as when a later
-    # entry brings a column no earlier entry had.
-    run_state.add_canonical_columns("flat", ["pdb_id", "first_value"])
     for pdb_id, partial in (("1ABC", first), ("2XYZ", second)):
         run_state.update_entry(
             pdb_id,
@@ -933,10 +930,4 @@ def test_finish_reports_columns_from_every_partial(tmp_path: Path) -> None:
     assert result.csv_path.read_text(encoding="utf-8").splitlines()[0] == (
         "pdb_id,first_value,later_value"
     )
-    resumed = open_run(tmp_path, "evolving-download")
-    assert resumed.canonical_columns_by_table()["flat"] == [
-        "pdb_id",
-        "first_value",
-        "later_value",
-    ]
     assert "| later_value |" in result.run_summary_path.read_text(encoding="utf-8")

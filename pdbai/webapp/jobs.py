@@ -49,7 +49,7 @@ from ..orchestration import (
     build_atom_site_dataset_from_mmcif_files,
 )
 from ..results import DatasetBuildResult, RunPausedError
-from ..runs import ProgressCallback, ProgressStage, open_run
+from ..runs import ProgressCallback, ProgressStage, error_message, open_run
 from ..runs.state import RunStatus, read_json_object
 from ..selection import SelectionResult
 from .route_helpers import camel_keys
@@ -522,10 +522,8 @@ class JobService:
             # Nothing above a worker thread could handle what it raises. Even
             # SystemExit therefore ends here, once the job is settled.
             _logger.exception("The build of run %r failed.", job.run_id)
-            # This is the message settle_run records. It falls back to the
-            # type's name for an exception that carries no text.
-            message = str(exception) or type(exception).__name__
-            persisted = self._finish(job, "error", error=message)
+            # This is the message the build records in the run's manifest.
+            persisted = self._finish(job, "error", error=error_message(exception))
         else:
             persisted = self._finish(
                 job,

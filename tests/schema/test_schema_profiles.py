@@ -29,7 +29,6 @@ from pdbai.profiles import (
     resolve_run_settings,
 )
 from pdbai.schema import (
-    ColumnRole,
     DatasetColumnSpec,
     column_granularity,
     columns_by_group,
@@ -268,26 +267,15 @@ def test_columns_with_role_lists_key_columns_in_display_order() -> None:
     )
 
 
-def test_a_column_refuses_an_unknown_role_and_a_join_column_name() -> None:
-    column = ColumnSpec("value", group="Fields")
-
-    with pytest.raises(ValueError, match="unknown role\\(s\\) residue_keys"):
-        DatasetColumnSpec(
-            column, engine=None, roles=frozenset({cast(ColumnRole, "residue_keys")})
-        )
+def test_a_column_refuses_a_join_column_name() -> None:
     with pytest.raises(ValueError, match="reserved for a star-schema join column"):
         DatasetColumnSpec(ColumnSpec("chain_key", group="Fields"), engine=None)
 
 
-def test_an_engine_column_refuses_the_wrong_engine_a_role_and_the_parser_name() -> None:
+def test_an_engine_column_refuses_the_parser_name() -> None:
     column = ColumnSpec("value", group="Fields")
-    owner = _stub("owner", column).spec
 
-    assert DatasetColumnSpec(column, owner).owner == "owner"
-    with pytest.raises(ValueError, match="'value' is not declared by engine 'other'"):
-        DatasetColumnSpec(column, _stub("other").spec)
-    with pytest.raises(ValueError, match="declares roles"):
-        DatasetColumnSpec(column, owner, roles=frozenset({"structure_key"}))
+    assert DatasetColumnSpec(column, _stub("owner", column).spec).owner == "owner"
     with pytest.raises(ValueError, match="'parser' is reserved"):
         DatasetColumnSpec(column, _stub("parser", column).spec)
 

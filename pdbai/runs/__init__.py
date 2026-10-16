@@ -41,6 +41,7 @@ from .state import (
     RunLockedError,
     RunNotResumableError,
     RunState,
+    error_message,
     open_run,
     run_table_names,
 )
@@ -60,6 +61,7 @@ __all__ = [
     "RunNotResumableError",
     "RunState",
     "RunSummary",
+    "error_message",
     "list_run_summaries",
     "new_run_id",
     "open_run",

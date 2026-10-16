@@ -2,7 +2,9 @@
 
 A build settles its run when it finishes or is paused. A run that settles is
 left completed or paused. A run that cannot settle is left in error, with
-the reason in its manifest, so the Runs panel can show why it stopped.
+the reason in its manifest, so the Runs panel can show why it stopped. The
+build that claimed the run records that error, as it does for any other
+failure.
 
 A paused run is settled like a finished one. The entries done before the
 pause then already form a dataset the user can open. Resuming the run
@@ -12,8 +14,7 @@ before the pause is kept or patched.
 
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping, Sequence
-from contextlib import contextmanager, suppress
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from .. import dataset_shapes
@@ -165,37 +166,6 @@ def _final_warnings(
     return final
 
 
-@contextmanager
-def _failure_recorded(run_state: RunState) -> Generator[None]:
-    """Leave the run in error when the block raises, and re-raise.
-
-    RunPausedError passes through without a record, since the run is then
-    left paused. A MemoryError, whose own message is usually empty, is raised
-    as a RuntimeError that says the partials are kept for a resume. A record
-    that cannot be written, as on a full disk, does not replace the error
-    being recorded.
-    """
-    try:
-        yield
-    except RunPausedError:
-        raise
-    except MemoryError as exception:
-        message = (
-            f"Final assembly ran out of memory: {exception}. The per-structure "
-            f"partials are still in runs/{run_state.directory.root.name}/partials/; "
-            "resume the run to retry."
-        )
-        with suppress(OSError):
-            run_state.set_run_status("error", error=message)
-        raise RuntimeError(message) from exception
-    except Exception as exception:
-        with suppress(OSError):
-            run_state.set_run_status(
-                "error", error=str(exception) or type(exception).__name__
-            )
-        raise
-
-
 def settle_run(
     *,
     run_state: RunState,
@@ -232,13 +202,13 @@ def settle_run(
     filter.
 
     A paused run with no done entry raises RunPausedError and is left paused.
-    Any other run with no done entry raises NoDatasetError. Assembly that
-    runs out of memory raises RuntimeError. Any other error that stops
-    assembly, publishing, or the reports is raised as it is. Every error but RunPausedError leaves
-    the run in error with its message recorded, unless the record itself
-    cannot be written.
+    Any other run with no done entry raises NoDatasetError. Running out of
+    memory raises RuntimeError, with a message that says the partials are
+    kept for a resume. Any other error that stops assembly, publishing, or
+    the reports is raised as it is. No error is recorded here. The caller
+    that claimed the run records it, as for any other failed build.
     """
-    with _failure_recorded(run_state):
+    try:
         directory = run_state.directory
         entries = entries_of(run_state.manifest())
         registry = get_engine_registry()
@@ -303,20 +273,17 @@ def settle_run(
                 )
             raise NoDatasetError(_no_data_message(pdb_ids, entries, warnings))
 
-        recorded_columns = run_state.canonical_columns_by_table()
-        column_order_by_table: dict[str, list[str]] = {
-            # A table's columns come in the order its partials give them, and
-            # the partials in the order of pdb_ids, so the same entries give
-            # the same file whichever download finished first. The columns
-            # recorded as entries were built serve only a table with no
-            # partial.
-            table: [] if partials_by_table[table] else recorded_columns.get(table, [])
-            for table in table_names
+        # A base table's columns come in the order its partials give them, and
+        # the partials in the order of pdb_ids, so the same entries give the
+        # same file whichever download finished first. An entry is recorded
+        # done only once it has a partial for every table, so every table has
+        # partials to take its columns from. An engine table's columns keep
+        # the order the engine declares, not the order the partials happened
+        # to record them in.
+        column_order_by_table = {
+            engine_table.name: list(engine_table.column_names)
+            for engine_table in engine_tables
         }
-        for engine_table in engine_tables:
-            # An engine table's columns keep the order the engine declares, not
-            # the order the partials happened to record them in.
-            column_order_by_table[engine_table.name] = list(engine_table.column_names)
         output_paths_by_table = {
             table: directory.dataset_path_for(table) for table in table_names
         }
@@ -334,8 +301,6 @@ def settle_run(
             table: read_csv_columns(path)
             for table, path in output_paths_by_table.items()
         }
-        for table, columns in columns_by_table.items():
-            run_state.set_canonical_columns(table, columns)
 
         output_receipts = [
             file_receipt(path, role=f"dataset_{table}")
@@ -392,6 +357,14 @@ def settle_run(
             additional_csv_paths=additional_paths,
             paused=paused,
         )
+    except MemoryError as exception:
+        # A MemoryError's own message is usually empty, so this one says what
+        # is left and how to retry.
+        raise RuntimeError(
+            f"Final assembly ran out of memory: {exception}. The per-structure "
+            f"partials are still in runs/{run_state.directory.root.name}/partials/; "
+            "resume the run to retry."
+        ) from exception
 
 
 __all__ = ["PREVIEW_ROW_COUNT", "settle_run"]

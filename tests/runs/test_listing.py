@@ -50,7 +50,7 @@ def test_a_poll_while_the_log_is_emptied_does_not_lose_later_updates(
     monkeypatch.setattr(
         state_module, "write_text_atomically", poll_before_the_log_is_emptied
     )
-    run_state.add_canonical_columns("flat", ["pdb_id"])
+    run_state.add_available_columns(["pdb_id"])
     monkeypatch.undo()
 
     # Four new lines make the log longer than the one the poll read. The

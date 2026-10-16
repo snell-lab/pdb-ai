@@ -30,7 +30,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import threading
 import time
 from collections.abc import Callable, Generator, Iterable, Mapping
 from contextlib import contextmanager
@@ -178,6 +177,15 @@ def read_run_record(directory: RunDirectory) -> RunRecord | None:
             return RunRecord(manifest, entries)
 
 
+def error_message(exception: BaseException) -> str:
+    """Return the text a run records for the error that stopped it.
+
+    Some exceptions, such as a bare AssertionError, carry no text. The text
+    is then the name of the exception's type.
+    """
+    return str(exception) or type(exception).__name__
+
+
 def run_table_names(manifest: Mapping[str, Any]) -> list[str]:
     """Return the tables a run writes, primary first, from its manifest.
 
@@ -249,7 +257,7 @@ def _append_execution_session(
 
 
 class RunState:
-    """One handle on a run's record, safe to use from several threads.
+    """One handle on a run's record, for one thread at a time to use.
 
     The handle keeps the manifest and the entries in memory once it has read
     them. Every change is made there and persisted before the call returns.
@@ -261,13 +269,12 @@ class RunState:
     def __init__(self, run_directory: RunDirectory) -> None:
         """Make a handle on a run that has not read its record yet."""
         self.directory = run_directory
-        self._lock = threading.Lock()
         # The manifest without its entries, and the entries, which change far
         # more often and are persisted by appending to a log.
         self._manifest: dict[str, Any] | None = None
         self._entries: dict[str, dict[str, Any]] = {}
 
-    def _loaded_manifest_locked(self) -> dict[str, Any]:
+    def _loaded_manifest(self) -> dict[str, Any]:
         if self._manifest is None:
             raise RuntimeError(
                 f"Run {self.directory.root.name!r} is not loaded; call "
@@ -275,7 +282,7 @@ class RunState:
             )
         return self._manifest
 
-    def _snapshot_locked(self) -> dict[str, Any]:
+    def _snapshot(self) -> dict[str, Any]:
         if self._manifest is None:
             return {}
         return {
@@ -283,13 +290,13 @@ class RunState:
             "entries": {pdb_id: dict(entry) for pdb_id, entry in self._entries.items()},
         }
 
-    def _write_manifest_locked(self) -> None:
+    def _write_manifest(self) -> None:
         # Writing the manifest folds every logged entry update into it and then
         # empties the log. After a crash between the two, the log still holds
         # updates the manifest already has, and applying them again gives the
         # same entries.
         write_text_atomically(
-            self.directory.manifest_path, manifest_text(self._snapshot_locked())
+            self.directory.manifest_path, manifest_text(self._snapshot())
         )
         if self.directory.entries_path.exists():
             write_text_atomically(self.directory.entries_path, "")
@@ -325,9 +332,8 @@ class RunState:
                     f"Run {name!r} was written under a different column schema; "
                     "start a new run instead of mixing its partials with new ones."
                 )
-            # An entry that stopped before it was done may have recorded its
-            # columns, which belong to the schema the run now leaves.
-            manifest["canonical_columns_by_table"] = {}
+            # An entry that stopped before it was done may have recorded the
+            # columns it offered, which belong to the schema the run now leaves.
             manifest.pop("filter_available_columns", None)
             manifest.pop("engine_tables", None)
             manifest["schema_fingerprint"] = schema_fingerprint
@@ -361,7 +367,6 @@ class RunState:
             "settings_hash": requested_settings_hash,
             "settings": dict(settings),
             "pdb_ids": pdb_ids,
-            "canonical_columns_by_table": {},
             "run_status": "running",
             "schema_fingerprint": schema_fingerprint,
         }
@@ -408,25 +413,24 @@ class RunState:
         """
         pdb_list = list(pdb_ids)
         requested_settings_hash = settings_hash(settings)
-        with self._lock:
-            if self.directory.manifest_path.exists():
-                record = self._resumed_record(
-                    pdb_list, requested_settings_hash, schema_fingerprint
-                )
-            else:
-                record = self._new_record(
-                    pdb_list,
-                    settings,
-                    requested_settings_hash,
-                    selection,
-                    schema_fingerprint,
-                )
-            _append_execution_session(record.manifest, selection, reference_data)
-            self.directory.ensure()
-            self._manifest = record.manifest
-            self._entries = record.entries or {}
-            self._write_manifest_locked()
-            return self._snapshot_locked()
+        if self.directory.manifest_path.exists():
+            record = self._resumed_record(
+                pdb_list, requested_settings_hash, schema_fingerprint
+            )
+        else:
+            record = self._new_record(
+                pdb_list,
+                settings,
+                requested_settings_hash,
+                selection,
+                schema_fingerprint,
+            )
+        _append_execution_session(record.manifest, selection, reference_data)
+        self.directory.ensure()
+        self._manifest = record.manifest
+        self._entries = record.entries or {}
+        self._write_manifest()
+        return self._snapshot()
 
     @contextmanager
     def claimed(self) -> Generator[None]:
@@ -476,29 +480,27 @@ class RunState:
         A handle that has not read the record yet reads it from the run
         directory. The snapshot is {} when the run has no readable manifest.
         """
-        with self._lock:
-            if self._manifest is None:
-                record = read_run_record(self.directory)
-                if record is None:
-                    return {}
-                self._manifest = record.manifest
-                self._entries = record.entries or {}
-            return self._snapshot_locked()
+        if self._manifest is None:
+            record = read_run_record(self.directory)
+            if record is None:
+                return {}
+            self._manifest = record.manifest
+            self._entries = record.entries or {}
+        return self._snapshot()
 
     def set_run_status(self, status: RunStatus, *, error: str | None = None) -> None:
         """Set and persist the run status, and the error that stopped the run.
 
         Without an error, the one an earlier status recorded is cleared.
         """
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            manifest["run_status"] = status
-            manifest["status_updated_at"] = time.time()
-            if error is None:
-                manifest.pop("error", None)
-            else:
-                manifest["error"] = error
-            self._write_manifest_locked()
+        manifest = self._loaded_manifest()
+        manifest["run_status"] = status
+        manifest["status_updated_at"] = time.time()
+        if error is None:
+            manifest.pop("error", None)
+        else:
+            manifest["error"] = error
+        self._write_manifest()
 
     def update_entry(self, pdb_id: str, **fields: object) -> None:
         """Update and persist one structure entry.
@@ -506,39 +508,36 @@ class RunState:
         The update is appended to the entry log and flushed to disk before the
         call returns, so it survives a crash from then on.
         """
-        with self._lock:
-            self._loaded_manifest_locked()
-            update = {**fields, "updated_at": time.time()}
-            self._entries.setdefault(pdb_id, {}).update(update)
-            line = json.dumps({"pdb_id": pdb_id, "fields": update}, default=str)
-            with self.directory.entries_path.open("ab+") as stream:
-                # An earlier write that failed partway may have left a line
-                # without its end, which this line must not be joined to.
-                if stream.tell():
-                    stream.seek(-1, os.SEEK_END)
-                    if stream.read(1) != b"\n":
-                        stream.write(b"\n")
-                stream.write(line.encode("utf-8") + b"\n")
-                stream.flush()
-                os.fsync(stream.fileno())
+        self._loaded_manifest()
+        update = {**fields, "updated_at": time.time()}
+        self._entries.setdefault(pdb_id, {}).update(update)
+        line = json.dumps({"pdb_id": pdb_id, "fields": update}, default=str)
+        with self.directory.entries_path.open("ab+") as stream:
+            # An earlier write that failed partway may have left a line
+            # without its end, which this line must not be joined to.
+            if stream.tell():
+                stream.seek(-1, os.SEEK_END)
+                if stream.read(1) != b"\n":
+                    stream.write(b"\n")
+            stream.write(line.encode("utf-8") + b"\n")
+            stream.flush()
+            os.fsync(stream.fileno())
 
     def set_output_receipts(self, receipts: list[dict[str, object]]) -> None:
         """Store the run's output receipts, replacing those stored before."""
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            provenance = object_dict(manifest.get("provenance"))
-            provenance["outputs"] = receipts
-            manifest["provenance"] = provenance
-            self._write_manifest_locked()
+        manifest = self._loaded_manifest()
+        provenance = object_dict(manifest.get("provenance"))
+        provenance["outputs"] = receipts
+        manifest["provenance"] = provenance
+        self._write_manifest()
 
     def set_published_filename(self, filename: str) -> None:
         """Store the filename the run's primary table was published under."""
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            if manifest.get("published_filename") == filename:
-                return
-            manifest["published_filename"] = filename
-            self._write_manifest_locked()
+        manifest = self._loaded_manifest()
+        if manifest.get("published_filename") == filename:
+            return
+        manifest["published_filename"] = filename
+        self._write_manifest()
 
     def published_filename(self) -> str | None:
         """Return the filename the run was last published under, if it was."""
@@ -547,42 +546,9 @@ class RunState:
 
     def set_engine_tables(self, records: list[dict[str, object]]) -> None:
         """Store the description of every engine table the run writes."""
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            manifest["engine_tables"] = records
-            self._write_manifest_locked()
-
-    def add_canonical_columns(self, table: str, columns: Iterable[str]) -> None:
-        """Add columns to the canonical columns of one output table.
-
-        The columns the table did not have follow those it had, in the order
-        given. The manifest is written only when the table's columns change.
-        """
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            by_table = object_dict(manifest.get("canonical_columns_by_table"))
-            existing = by_table.get(table)
-            merged = list(dict.fromkeys([*str_list(existing), *columns]))
-            if merged == existing:
-                return
-            by_table[table] = merged
-            manifest["canonical_columns_by_table"] = by_table
-            self._write_manifest_locked()
-
-    def set_canonical_columns(self, table: str, columns: Iterable[str]) -> None:
-        """Replace the canonical columns of one output table.
-
-        The manifest is written only when the table's columns change.
-        """
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            by_table = object_dict(manifest.get("canonical_columns_by_table"))
-            replaced = list(columns)
-            if by_table.get(table) == replaced:
-                return
-            by_table[table] = replaced
-            manifest["canonical_columns_by_table"] = by_table
-            self._write_manifest_locked()
+        manifest = self._loaded_manifest()
+        manifest["engine_tables"] = records
+        self._write_manifest()
 
     def add_available_columns(self, columns: Iterable[str]) -> None:
         """Record columns a structure offered to the column filter.
@@ -590,23 +556,17 @@ class RunState:
         The columns not yet recorded follow those that were, in the order
         given. The manifest is written only when the record changes.
         """
-        with self._lock:
-            manifest = self._loaded_manifest_locked()
-            existing = manifest.get("filter_available_columns")
-            merged = list(dict.fromkeys([*str_list(existing), *columns]))
-            if merged == existing:
-                return
-            manifest["filter_available_columns"] = merged
-            self._write_manifest_locked()
+        manifest = self._loaded_manifest()
+        existing = manifest.get("filter_available_columns")
+        merged = list(dict.fromkeys([*str_list(existing), *columns]))
+        if merged == existing:
+            return
+        manifest["filter_available_columns"] = merged
+        self._write_manifest()
 
     def available_columns(self) -> list[str]:
         """Return every column any structure offered to the column filter."""
         return str_list(self.manifest().get("filter_available_columns"))
-
-    def canonical_columns_by_table(self) -> dict[str, list[str]]:
-        """Return the canonical columns recorded for each output table."""
-        by_table = object_dict(self.manifest().get("canonical_columns_by_table"))
-        return {table: str_list(columns) for table, columns in by_table.items()}
 
     def done_pdb_ids(self, required_tables: Iterable[str] = ()) -> set[str]:
         """Return the identifiers of the entries that need no more work.
@@ -652,10 +612,7 @@ class RunState:
             "total": total,
             "subject": subject,
         }
-        with (
-            self._lock,
-            self.directory.events_path.open("a", encoding="utf-8") as stream,
-        ):
+        with self.directory.events_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(event) + "\n")
         if callback:
             callback(stage, current, total, subject)
@@ -700,6 +657,7 @@ __all__ = [
     "RunStatus",
     "apply_entry_updates",
     "entries_of",
+    "error_message",
     "file_stamp",
     "manifest_text",
     "open_run",

@@ -41,7 +41,6 @@ _CHANGES: dict[str, Callable[[RunState], None]] = {
     "entry": lambda run: run.update_entry("1ABC", state="done"),
     "receipts": lambda run: run.set_output_receipts([]),
     "engine tables": lambda run: run.set_engine_tables([]),
-    "canonical columns": lambda run: run.add_canonical_columns("flat", ["pdb_id"]),
     "available columns": lambda run: run.add_available_columns(["pdb_id"]),
     "published filename": lambda run: run.set_published_filename("atoms.csv"),
 }
@@ -146,7 +145,6 @@ def test_adopting_a_schema_drops_the_columns_recorded_under_the_old_one(
     run_state.load_or_initialize(["1ABC"], SETTINGS, schema_fingerprint="old")
     # An entry that stopped before it was done has already recorded its
     # columns.
-    run_state.add_canonical_columns("flat", ["pdb_id", "dropped_column"])
     run_state.add_available_columns(["pdb_id", "dropped_column"])
     run_state.set_engine_tables([{"name": "old_table"}])
 
@@ -154,7 +152,6 @@ def test_adopting_a_schema_drops_the_columns_recorded_under_the_old_one(
     manifest = resumed.load_or_initialize(["1ABC"], SETTINGS, schema_fingerprint="new")
 
     assert manifest["schema_fingerprint"] == "new"
-    assert manifest["canonical_columns_by_table"] == {}
     assert "engine_tables" not in manifest
     assert resumed.available_columns() == []
 

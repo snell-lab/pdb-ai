@@ -3,9 +3,7 @@
 DatasetColumnSpec pairs a column declaration with the engine that owns it, or
 with none for a base column the parser writes. It answers which switch the
 column is attributed to and whether a run with given options and source writes
-it. A pairing the schema cannot use is refused when it is made, so a misspelt
-role or a column given to the wrong engine raises ValueError rather than
-leaving a table without its key.
+it.
 
 Only a base column plays a role in building the star schema's keys. The keys
 are built in every run, and an engine's columns exist only when the engine
@@ -18,7 +16,7 @@ dataset.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, get_args
+from typing import Literal
 
 from ..engines.core import ColumnSpec, DatasetSource, EngineOptions, EngineSpec
 
@@ -48,8 +46,6 @@ type ColumnRole = Literal[
     "structure_key",
 ]
 
-COLUMN_ROLES: tuple[ColumnRole, ...] = get_args(ColumnRole.__value__)
-
 # The owner reported for a base column, so no engine may take it as its name.
 PARSER_OWNER = "parser"
 
@@ -70,9 +66,8 @@ class DatasetColumnSpec:
     the engine is enabled and applies to the run's source, and the column's own
     declaration can only narrow that.
 
-    Raises ValueError for a column named after a star-schema join column, an
-    unknown role, an engine named "parser", an engine that does not declare the
-    column, and an engine column given roles.
+    Raises ValueError for a column named after a star-schema join column and
+    for an engine named "parser".
     """
 
     column: ColumnSpec
@@ -83,33 +78,16 @@ class DatasetColumnSpec:
     roles: frozenset[ColumnRole] = frozenset()
 
     def __post_init__(self) -> None:
-        """Refuse a pairing the schema cannot use."""
+        """Refuse a name the star schema or the base columns reserve."""
         name = self.column.name
         if name in JOIN_COLUMNS:
             raise ValueError(
                 f"Column name {name!r} is reserved for a star-schema join column"
             )
-        unknown = sorted(set(self.roles) - set(COLUMN_ROLES))
-        if unknown:
-            raise ValueError(
-                f"Column {name!r} declares unknown role(s) {', '.join(unknown)}; "
-                f"use one of {', '.join(COLUMN_ROLES)}"
-            )
-        if self.engine is None:
-            return
-        if self.engine.name == PARSER_OWNER:
+        if self.engine is not None and self.engine.name == PARSER_OWNER:
             raise ValueError(
                 f"Engine name {PARSER_OWNER!r} is reserved for the owner of the "
                 "base columns"
-            )
-        if not any(column is self.column for column in self.engine.columns):
-            raise ValueError(
-                f"Column {name!r} is not declared by engine {self.engine.name!r}"
-            )
-        if self.roles:
-            raise ValueError(
-                f"Column {name!r} of engine {self.engine.name!r} declares roles, "
-                "which only base columns have"
             )
 
     @property
@@ -151,7 +129,6 @@ class DatasetColumnSpec:
 
 __all__ = [
     "CHAIN_JOIN_COLUMN",
-    "COLUMN_ROLES",
     "JOIN_COLUMNS",
     "PARSER_OWNER",
     "RESIDUE_JOIN_COLUMN",

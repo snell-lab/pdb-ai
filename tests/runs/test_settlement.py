@@ -16,7 +16,6 @@ from pdbai.results import (
 )
 from pdbai.runs import (
     RunState,
-    list_run_summaries,
     open_run,
     settle_run,
     write_partial_csvs,
@@ -47,8 +46,6 @@ def _run_with_entries(
             run_state.directory,
             pdb_id,
         )
-        for table in tables:
-            run_state.add_canonical_columns(table, ["pdb_id", "x"])
         run_state.add_available_columns(["pdb_id", "x", "y"])
         run_state.update_entry(
             pdb_id,
@@ -118,7 +115,7 @@ def test_columns_follow_the_run_order_not_the_order_entries_finished(
         "1ABC": ["pdb_id", "first", "shared"],
         "2XYZ": ["pdb_id", "second", "shared"],
     }
-    # 2XYZ finished first, so the columns were recorded in its order.
+    # 2XYZ finished first, so its partial was written first.
     for pdb_id in ("2XYZ", "1ABC"):
         columns = columns_by_id[pdb_id]
         paths = write_partial_csvs(
@@ -126,7 +123,6 @@ def test_columns_follow_the_run_order_not_the_order_entries_finished(
             run_state.directory,
             pdb_id,
         )
-        run_state.add_canonical_columns("flat", columns)
         run_state.update_entry(
             pdb_id,
             state="done",
@@ -137,11 +133,9 @@ def test_columns_follow_the_run_order_not_the_order_entries_finished(
 
     result = _settle(run_state, tmp_path, offline_options)
 
-    header = ["pdb_id", "first", "shared", "second"]
-    assert result.csv_path.read_text(encoding="utf-8").splitlines()[0] == ",".join(
-        header
+    assert result.csv_path.read_text(encoding="utf-8").splitlines()[0] == (
+        "pdb_id,first,shared,second"
     )
-    assert run_state.canonical_columns_by_table()["flat"] == header
 
 
 def test_a_settled_run_is_completed_and_published(
@@ -229,7 +223,7 @@ def test_without_publishing_the_result_points_into_the_run_directory(
     )
 
 
-def test_settlement_records_why_no_entry_produced_data(
+def test_settlement_says_why_no_entry_produced_data(
     tmp_path: Path, offline_options: EngineOptions
 ) -> None:
     run_state = _run_with_entries(tmp_path, offline_options, done=(), failed=("1ABC",))
@@ -237,9 +231,6 @@ def test_settlement_records_why_no_entry_produced_data(
     with pytest.raises(NoDatasetError, match="1ABC: invalid coordinates"):
         _settle(run_state, tmp_path, offline_options)
 
-    manifest = run_state.manifest()
-    assert manifest["run_status"] == "error"
-    assert "1ABC: invalid coordinates" in manifest["error"]
     with run_state.directory.report_path.open(encoding="utf-8", newline="") as stream:
         rows = list(csv.DictReader(stream))
     assert rows[0]["state"] == "failed"
@@ -256,7 +247,7 @@ def test_the_reason_names_only_the_first_failed_entries(
         _settle(run_state, tmp_path, offline_options)
 
 
-def test_a_run_that_cannot_be_published_is_left_in_error(
+def test_a_run_that_cannot_be_published_is_not_left_completed(
     tmp_path: Path, offline_options: EngineOptions
 ) -> None:
     run_state = _run_with_entries(tmp_path, offline_options)
@@ -265,11 +256,9 @@ def test_a_run_that_cannot_be_published_is_left_in_error(
     with pytest.raises(ValueError, match="not a file"):
         _settle(run_state, tmp_path, offline_options, output_filename="taken.csv")
 
-    manifest = run_state.manifest()
-    assert manifest["run_status"] == "error"
-    assert "not a file" in manifest["error"]
     # Every entry is done, and the run is still not taken for a completed one.
-    assert list_run_summaries(tmp_path)[0]["status"] == "error"
+    # The build that claimed it records the error.
+    assert run_state.manifest()["run_status"] == "running"
 
 
 def test_running_out_of_memory_is_recorded_with_what_to_do(
@@ -282,12 +271,10 @@ def test_running_out_of_memory_is_recorded_with_what_to_do(
 
     monkeypatch.setattr(settlement_module, "assemble_final_csvs", out_of_memory)
 
-    with pytest.raises(RuntimeError, match="ran out of memory.*resume the run"):
+    with pytest.raises(
+        RuntimeError, match="ran out of memory.*runs/run/partials/.*resume the run"
+    ):
         _settle(run_state, tmp_path, offline_options)
-
-    manifest = run_state.manifest()
-    assert manifest["run_status"] == "error"
-    assert "runs/run/partials/" in manifest["error"]
 
 
 def test_a_recorded_partial_outside_the_run_is_not_assembled(

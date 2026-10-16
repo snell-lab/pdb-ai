@@ -149,24 +149,6 @@ def test_run_manifest_keeps_one_provenance_session_per_invocation(
     ] == [{}, {"table": {"sha256": "abc"}}]
 
 
-def test_run_manifest_merges_columns_observed_in_later_structures(
-    tmp_path: Path,
-) -> None:
-    state = open_run(tmp_path, "evolving-schema")
-    state.load_or_initialize(
-        ["1ABC", "2XYZ"], {"dataset_shape": "flat"}, schema_fingerprint="test-schema"
-    )
-
-    state.add_canonical_columns("flat", ["pdb_id", "first_value"])
-    state.add_canonical_columns("flat", ["pdb_id", "later_value", "first_value"])
-
-    assert state.canonical_columns_by_table()["flat"] == [
-        "pdb_id",
-        "first_value",
-        "later_value",
-    ]
-
-
 def test_run_summary_counts_logged_entries_and_keeps_the_recorded_status(
     tmp_path: Path,
 ) -> None:

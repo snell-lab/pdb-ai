@@ -11,6 +11,7 @@ from pdbai.orchestration.api import build_atom_site_dataset
 from pdbai.orchestration.build import DatasetBuild
 from pdbai.results import RunPausedError
 from pdbai.runs import open_run
+from pdbai.runs import settlement as settlement_module
 
 _OPTIONS = EngineOptions(values={"include_rabdam": False})
 
@@ -64,6 +65,23 @@ def test_a_failure_without_a_message_is_recorded_by_its_type(
         _build(tmp_path, "silent")
 
     assert open_run(tmp_path, "silent").manifest()["error"] == "AssertionError"
+
+
+def test_a_failure_in_settlement_leaves_the_run_in_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def out_of_memory(*_args: object, **_kwargs: object) -> None:
+        raise MemoryError
+
+    monkeypatch.setattr(api_module, "process_downloads", _no_downloads)
+    monkeypatch.setattr(settlement_module, "_write_reports", out_of_memory)
+
+    with pytest.raises(RuntimeError, match="ran out of memory") as raised:
+        _build(tmp_path, "settling")
+
+    manifest = open_run(tmp_path, "settling").manifest()
+    assert manifest["run_status"] == "error"
+    assert manifest["error"] == str(raised.value)
 
 
 def test_an_interruption_leaves_the_run_running(
