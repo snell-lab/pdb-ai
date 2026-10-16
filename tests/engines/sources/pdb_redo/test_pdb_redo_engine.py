@@ -669,7 +669,18 @@ def test_an_entry_the_local_copy_lacks_is_requested(tmp_path: Path) -> None:
 def test_a_local_reflection_file_that_is_not_mtz_fails(tmp_path: Path) -> None:
     (_mirror_entry(tmp_path) / "1abc_final.mtz").write_bytes(b"<html></html>")
 
-    with pytest.raises(RuntimeError, match="is not an MTZ file"):
+    with pytest.raises(RuntimeError, match="local copy is not an MTZ reflection"):
         engine_module.PDB_REDO_MAP_ACQUISITION_ENGINE.run(
             _map_context(FakeSession(), tmp_path)
+        )
+
+
+def test_a_local_model_file_that_is_not_mmcif_fails(tmp_path: Path) -> None:
+    # The copy is checked as a download would be, so an error page saved in
+    # its place never reaches the parser.
+    (_mirror_entry(tmp_path) / "1abc_final.cif").write_bytes(b"<html></html>")
+
+    with pytest.raises(RuntimeError, match="does not contain an mmCIF data block"):
+        engine_module.PDB_REDO_ACQUISITION_ENGINE.run(
+            _acquisition_context(FakeSession(), tmp_path)
         )

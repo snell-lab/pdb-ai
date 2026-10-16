@@ -66,7 +66,9 @@ rsync -av --exclude=attic rsync://rsync.pdb-redo.eu/pdb-redo/ \
 To copy only the entries of a run, give rsync a list of their files with
 `--files-from`, three lines per entry in the form `cb/1cbs/1cbs_final.cif`,
 `cb/1cbs/1cbs_final.mtz`. A file of the copy is used as it stands and does not
-expire, since whoever made the copy decides when to renew it. The manifest
+expire, since whoever made the copy decides when to renew it. It must still pass
+the check a download would: an mmCIF file must open a data block and a reflection
+file must start as an MTZ file, or the engine fails for the entry. The manifest
 records it by a `file://` URL. An entry the copy lacks is requested from
 PDB-Redo as it would be without a copy, so a partial copy is safe.
 

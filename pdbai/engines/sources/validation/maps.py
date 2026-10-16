@@ -28,8 +28,9 @@ from ...core import (
     EngineSpec,
     SourceFile,
 )
-from ..http_cache import NotAvailableError, fetch_gzip
+from ..http_cache import GZIP_FILE, NotAvailableError, fetch_file
 from ..map_sources import DENSITY_SOURCE_WWPDB, DENSITY_TOGGLE, density_reads
+from .fetch import ARCHIVE_MISSING_STATUSES, validation_file_url
 
 VALIDATION_2FOFC_MAP_PATH = ArtifactKey(
     "validation_2fofc_map_path",
@@ -47,9 +48,6 @@ VALIDATION_FOFC_MAP_PATH = ArtifactKey(
 # The wwPDB computes these maps for X-ray entries only.
 _VALIDATION_MAP_TECHNIQUES = frozenset({"x_ray_diffraction"})
 
-# files.rcsb.org answers 403, not 404, for a file it does not hold.
-_MISSING_STATUSES = frozenset({403})
-
 # Each map's file name suffix in the archive, its cache name suffix, the
 # artifact it is published under, and its role in the manifest's receipts.
 _MAP_FILES = (
@@ -66,15 +64,6 @@ _MAP_FILES = (
         "wwpdb_validation_fofc_map",
     ),
 )
-
-
-def validation_map_url(pdb_id: str, file_suffix: str) -> str:
-    """Return the archive URL of one validation map file of an entry."""
-    lower = normalize_pdb_id(pdb_id).lower()
-    return (
-        "https://files.rcsb.org/pub/pdb/validation_reports/"
-        f"{lower[1:3]}/{lower}/{lower}_{file_suffix}"
-    )
 
 
 class ValidationMapAcquisitionEngine:
@@ -105,16 +94,17 @@ class ValidationMapAcquisitionEngine:
         source_files: list[SourceFile] = []
         available = True
         for file_suffix, cache_suffix, key, role in _MAP_FILES:
-            url = validation_map_url(lower, file_suffix)
+            url = validation_file_url(lower, file_suffix)
             path = services.cache_root / "validation_maps" / f"{lower}_{cache_suffix}"
             try:
-                cached = fetch_gzip(
+                cached = fetch_file(
                     url,
                     path,
+                    GZIP_FILE,
                     session=services.session,
                     timeout=services.timeout,
                     label=f"wwPDB validation map {lower.upper()}",
-                    missing_statuses=_MISSING_STATUSES,
+                    missing_statuses=ARCHIVE_MISSING_STATUSES,
                 )
             except NotAvailableError:
                 available = False
@@ -135,5 +125,4 @@ __all__ = [
     "VALIDATION_FOFC_MAP_PATH",
     "VALIDATION_MAP_ACQUISITION_ENGINE",
     "ValidationMapAcquisitionEngine",
-    "validation_map_url",
 ]

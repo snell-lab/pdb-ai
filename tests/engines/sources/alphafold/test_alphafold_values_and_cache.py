@@ -187,6 +187,7 @@ def test_a_cached_model_is_served_without_a_request(
     result, session = _fetch_fresh_model(monkeypatch, tmp_path)
 
     assert result.plddt_by_position == {"1": 12.5}
+    assert result.cached
     assert session.calls == []
 
 
@@ -204,10 +205,12 @@ def test_a_cached_model_of_another_accession_is_fetched_again(
 def test_a_complete_model_is_cached_with_its_residue_names(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    _fetch_fresh_model(monkeypatch, tmp_path)
+    result, _ = _fetch_fresh_model(monkeypatch, tmp_path)
 
     written = json.loads(
         model_cache_path(tmp_path, "P12345").read_text(encoding="utf-8")
     )
 
+    assert not result.cached
     assert written["model"]["residue_name_by_position"] == {"1": "MET"}
+    assert "cached" not in written["model"]

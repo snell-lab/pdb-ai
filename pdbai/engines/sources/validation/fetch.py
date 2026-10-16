@@ -85,19 +85,33 @@ def _failure_result(status: str, message: str) -> ValidationReportResult:
     return ValidationReportResult(report=empty_report, status=status, message=message)
 
 
-def validation_report_url(pdb_id: str) -> str:
-    """Return the archive URL of an entry's wwPDB validation XML report.
+# The statuses with which the archive says it has no file. files.rcsb.org
+# answers 403, not 404, for a file it does not hold, as a store that keeps its
+# listing private does.
+ARCHIVE_MISSING_STATUSES = frozenset({403, 404, 410})
 
-    The archive files each report under the second and third characters of
-    the entry's lower-case ID. Raise ValueError when ``pdb_id`` is not a PDB
-    ID.
+
+def validation_file_url(pdb_id: str, file_suffix: str) -> str:
+    """Return the archive URL of one of an entry's wwPDB validation files.
+
+    The archive files them under the second and third characters of the
+    entry's lower-case ID, each named by that ID, an underscore, and
+    ``file_suffix``. Raise ValueError when ``pdb_id`` is not a PDB ID.
     """
     normalized_id = normalize_pdb_id(pdb_id).lower()
     middle = normalized_id[1:3]
     return (
         "https://files.rcsb.org/pub/pdb/validation_reports"
-        f"/{middle}/{normalized_id}/{normalized_id}_validation.xml.gz"
+        f"/{middle}/{normalized_id}/{normalized_id}_{file_suffix}"
     )
+
+
+def validation_report_url(pdb_id: str) -> str:
+    """Return the archive URL of an entry's wwPDB validation XML report.
+
+    Raise ValueError when ``pdb_id`` is not a PDB ID.
+    """
+    return validation_file_url(pdb_id, "validation.xml.gz")
 
 
 def fetch_validation_report(
@@ -126,9 +140,7 @@ def fetch_validation_report(
     url = validation_report_url(entry_id)
     try:
         response = session.get(url, timeout=timeout)
-        # files.rcsb.org answers 403, not 404, for a file it does not hold,
-        # as a store that keeps its listing private does.
-        if response.status_code in {403, 404, 410}:
+        if response.status_code in ARCHIVE_MISSING_STATUSES:
             message = (
                 f"wwPDB validation report is not available for {entry_id} "
                 f"(HTTP {response.status_code})."
@@ -170,6 +182,7 @@ def fetch_validation_report(
 
 
 __all__ = [
+    "ARCHIVE_MISSING_STATUSES",
     "VALIDATION_STATUS_AVAILABLE",
     "VALIDATION_STATUS_CACHED",
     "VALIDATION_STATUS_FETCH_FAILED",
@@ -177,5 +190,6 @@ __all__ = [
     "VALIDATION_STATUS_PARSE_FAILED",
     "ValidationReportResult",
     "fetch_validation_report",
+    "validation_file_url",
     "validation_report_url",
 ]

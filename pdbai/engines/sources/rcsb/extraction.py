@@ -31,20 +31,13 @@ from collections.abc import Callable, Mapping
 from typing import Any, cast
 
 from ....json_values import object_dict, object_list
-from ..scalars import to_float, to_int
+from ..scalars import to_float, to_int, to_text
 
 
 def _first_row(entry_json: Mapping[str, object], category: str) -> dict[str, Any]:
     """Return the first row of a list-valued category, or {} without one."""
     rows = object_list(entry_json.get(category))
     return object_dict(rows[0]) if rows else {}
-
-
-def _text(value: object) -> str | None:
-    """Return the value stripped, or None when it is not text or is blank."""
-    if not isinstance(value, str):
-        return None
-    return value.strip() or None
 
 
 def _texts_in_every_row(
@@ -54,7 +47,7 @@ def _texts_in_every_row(
     return [
         text
         for row in object_list(entry_json.get(category))
-        if (text := _text(object_dict(row).get(key))) is not None
+        if (text := to_text(object_dict(row).get(key))) is not None
     ]
 
 
@@ -70,10 +63,10 @@ def extract_beamline_and_wavelength(
     zero or below is missing.
     """
     first_source = _first_row(entry_json, "diffrn_source")
-    beamline = _text(first_source.get("pdbx_synchrotron_beamline")) or _text(
+    beamline = to_text(first_source.get("pdbx_synchrotron_beamline")) or to_text(
         first_source.get("type")
     )
-    wavelength_text = _text(first_source.get("pdbx_wavelength_list"))
+    wavelength_text = to_text(first_source.get("pdbx_wavelength_list"))
     if wavelength_text is not None:
         tokens = [token for token in re.split(r"[,\s]+", wavelength_text) if token]
         first_wavelength: object = tokens[0] if tokens else None
@@ -111,7 +104,7 @@ def _positive_float(value: object) -> float | None:
 
 def _yes_or_no(value: object) -> bool | None:
     """Return True for the archive's Y, False for N, and None for anything else."""
-    text = _text(value)
+    text = to_text(value)
     if text is None:
         return None
     return {"Y": True, "N": False}.get(text.upper())
@@ -124,10 +117,10 @@ _FIRST_ROW_FIELDS: tuple[tuple[str, str, str, Callable[[object], object]], ...] 
     # plausible in this column, so it is not used as a fallback.
     ("temperature_K", "diffrn", "ambient_temp", to_float),
     ("crystal_pH", "exptl_crystal_grow", "pH", to_float),
-    ("crystallization_method", "exptl_crystal_grow", "method", _text),
+    ("crystallization_method", "exptl_crystal_grow", "method", to_text),
     ("num_crystals", "exptl", "crystals_number", to_int),
-    ("first_radiation_source", "diffrn_source", "source", _text),
-    ("synchrotron_site", "diffrn_source", "pdbx_synchrotron_site", _text),
+    ("first_radiation_source", "diffrn_source", "source", to_text),
+    ("synchrotron_site", "diffrn_source", "pdbx_synchrotron_site", to_text),
     ("collection_year", "diffrn_detector", "pdbx_collection_date", _year_of),
     ("wilson_b", "reflns", "B_iso_Wilson_estimate", to_float),
     ("multiplicity", "reflns", "pdbx_redundancy", to_float),
@@ -146,7 +139,7 @@ _FIRST_ROW_FIELDS: tuple[tuple[str, str, str, Callable[[object], object]], ...] 
         "sample_delivery_method",
         "pdbx_serial_crystallography_sample_delivery",
         "method",
-        _text,
+        to_text,
     ),
     (
         "xfel_pulse_duration_fs",
@@ -224,17 +217,17 @@ def extract_experiment_fields(
         for output, category, key, coerce in _FIRST_ROW_FIELDS
     }
     detector = _first_row(entry_json, "diffrn_detector")
-    info["detector_type"] = _text(detector.get("detector")) or _text(
+    info["detector_type"] = to_text(detector.get("detector")) or to_text(
         detector.get("type")
     )
-    title = _text(object_dict(entry_json.get("struct")).get("title"))
-    keywords = _text(object_dict(entry_json.get("struct_keywords")).get("text"))
+    title = to_text(object_dict(entry_json.get("struct")).get("title"))
+    keywords = to_text(object_dict(entry_json.get("struct_keywords")).get("text"))
     info["title"] = title
     info["keywords"] = keywords
     info["mentions_time_resolved"] = _mentions_time_resolved(title, keywords)
     info["radiation_dose_MGy"] = _dose_from_title(title)
     info["resolution_rcsb"] = _resolution(entry_json)
-    info["space_group"] = _text(
+    info["space_group"] = to_text(
         object_dict(entry_json.get("symmetry")).get("space_group_name_H_M")
     )
     info["deposition_year"] = _year_of(
@@ -246,7 +239,7 @@ def extract_experiment_fields(
     info["radiation_sources"] = _texts_in_every_row(
         entry_json, "diffrn_source", "source"
     )
-    methodology = _text(
+    methodology = to_text(
         object_dict(entry_json.get("rcsb_entry_info")).get(
             "structure_determination_methodology"
         )
@@ -269,13 +262,13 @@ def extract_citation_fields(entry_json: Mapping[str, object]) -> dict[str, objec
     citation_authors = "; ".join(
         name
         for author in object_list(primary_citation.get("rcsb_authors"))
-        if (name := _text(author)) is not None
+        if (name := to_text(author)) is not None
     )
 
     named_authors = [
         (name, object_dict(value).get("pdbx_ordinal"))
         for value in object_list(entry_json.get("audit_author"))
-        if (name := _text(object_dict(value).get("name"))) is not None
+        if (name := to_text(object_dict(value).get("name"))) is not None
     ]
 
     def author_order(author: tuple[str, object]) -> tuple[int, int]:
@@ -289,10 +282,10 @@ def extract_citation_fields(entry_json: Mapping[str, object]) -> dict[str, objec
     )
 
     return {
-        "citation_title": _text(primary_citation.get("title")),
-        "citation_journal_abbrev": _text(primary_citation.get("journal_abbrev")),
+        "citation_title": to_text(primary_citation.get("title")),
+        "citation_journal_abbrev": to_text(primary_citation.get("journal_abbrev")),
         "citation_year": to_int(primary_citation.get("year")),
-        "citation_doi": _text(primary_citation.get("pdbx_database_id_DOI")),
+        "citation_doi": to_text(primary_citation.get("pdbx_database_id_DOI")),
         "citation_pubmed_id": _positive_int(
             primary_citation.get("pdbx_database_id_PubMed")
         ),

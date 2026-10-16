@@ -22,9 +22,7 @@ model nor as atoms the engine left alone.
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
-from urllib.parse import quote
 
 from ...core import (
     ENTRY_RECORD,
@@ -43,7 +41,6 @@ from ...core import (
     SourceFile,
     column_specs,
 )
-from ..http_cache import read_envelope
 from ..rcsb.metadata import rcsb_entry_url
 from .annotation import annotate_atom_dataframe
 from .artifacts import AFDB_ENTRY
@@ -57,7 +54,7 @@ from .models import (
     model_cache_path,
     sequence_cluster_column,
 )
-from .references import RCSB_POLYMER_ENTITY_URL
+from .references import polymer_entity_url
 
 
 def _uses_afdb(options: EngineOptions) -> bool:
@@ -96,7 +93,6 @@ class AlphaFoldAcquisitionEngine:
         """
         services = context.require_services()
         cache_directory = services.cache_root / "afdb"
-        started_at = time.time()
         result = fetch_afdb_entry(
             context.pdb_id,
             session=services.session,
@@ -107,22 +103,12 @@ class AlphaFoldAcquisitionEngine:
         )
         return EngineResult(
             artifacts={AFDB_ENTRY: result},
-            source_files=_cached_source_files(result, cache_directory, started_at),
+            source_files=_cached_source_files(result, cache_directory),
         )
 
 
-def _cached_before(path: Path, started_at: float) -> bool | None:
-    # A cache file the lookup wrote is dated after it started, and one it
-    # read was dated before. A file without a readable date is not known.
-    envelope = read_envelope(path)
-    cached_at = envelope.get("cached_at") if envelope is not None else None
-    if not isinstance(cached_at, (int, float)):
-        return None
-    return cached_at < started_at
-
-
 def _cached_source_files(
-    result: AFDBEntryResult, cache_directory: Path, started_at: float
+    result: AFDBEntryResult, cache_directory: Path
 ) -> tuple[SourceFile, ...]:
     """Return the cache files that hold the parts of the result they cache.
 
@@ -130,8 +116,8 @@ def _cached_source_files(
     the lookup caches, by the rules references.py and model_fetch.py give.
     A file an earlier run left beside a partial or failed result is
     therefore not listed, since this lookup neither read nor wrote it. Each
-    file says whether it was cached before ``started_at``, the time the
-    lookup began, and so was read rather than written.
+    file says whether the lookup read it rather than wrote it, as the result
+    records.
     """
     source_files: list[SourceFile] = []
     discovery_path = discovery_cache_path(cache_directory, result.pdb_id)
@@ -143,11 +129,10 @@ def _cached_source_files(
     if discovery_cached and discovery_path.is_file():
         # The mapping comes from the entry record and the record of each
         # protein entity.
-        pdb_lower = result.pdb_id.lower()
         source_urls = [
             rcsb_entry_url(result.pdb_id),
             *(
-                f"{RCSB_POLYMER_ENTITY_URL}{pdb_lower}/{quote(entity_id, safe='')}"
+                polymer_entity_url(result.pdb_id, entity_id)
                 for entity_id in result.protein_entity_ids
             ),
         ]
@@ -156,20 +141,19 @@ def _cached_source_files(
                 "rcsb_polymer_entity_mapping_cache",
                 discovery_path,
                 "; ".join(source_urls),
-                _cached_before(discovery_path, started_at),
+                result.discovery_cached,
             )
         )
     for accession, model in sorted(result.models.items()):
         model_path = model_cache_path(cache_directory, accession)
-        model_cached = model.status == AFDB_STATUS_AVAILABLE and model.has_scores
-        if not model_cached or not model_path.is_file():
+        if model.status != AFDB_STATUS_AVAILABLE or not model_path.is_file():
             continue
         source_files.append(
             SourceFile(
                 "alphafold_model_cache",
                 model_path,
                 "; ".join(model.source_urls) or None,
-                _cached_before(model_path, started_at),
+                model.cached,
             )
         )
     return tuple(source_files)

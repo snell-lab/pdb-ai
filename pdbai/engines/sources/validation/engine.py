@@ -50,7 +50,7 @@ from ...core import (
     SourceFile,
     column_specs,
 )
-from ..scalars import to_float
+from ..scalars import to_float, to_text
 from .artifacts import VALIDATION_REPORT
 from .fetch import (
     VALIDATION_STATUS_CACHED,
@@ -308,7 +308,7 @@ class ValidationAnnotationEngine:
             )
         for name in ("rama_class", "rotamer_class"):
             output[name] = pd.Series(
-                [_class_text(values.get(name)) for values in residue_values_by_atom],
+                [to_text(values.get(name)) for values in residue_values_by_atom],
                 index=output.index,
                 dtype=object,
             )
@@ -354,13 +354,6 @@ def _kept_conformers(atoms: pd.DataFrame, keys: pd.Series) -> pd.Series:
         return pd.Series("", index=atoms.index, dtype=str)
     first_alt_ids = alt_ids[labelled].groupby(keys[labelled], sort=False).first()
     return keys.map(first_alt_ids).fillna("").astype(str)
-
-
-def _class_text(value: object) -> str | None:
-    """Return a Ramachandran or rotamer class, or None when it is not text."""
-    if not isinstance(value, str):
-        return None
-    return value.strip() or None
 
 
 VALIDATION_ACQUISITION_ENGINE = ValidationAcquisitionEngine()

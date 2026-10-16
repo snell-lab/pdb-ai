@@ -13,9 +13,10 @@ pdb_redo_mirror/cb/1cbs/1cbs_final.cif. That is what
 writes, for the whole databank or for the entries a file list names.
 
 A file of the copy is used as it stands. It does not expire as a downloaded
-file does, since the person who made the copy decides when to renew it. An
-entry the copy lacks is requested from PDB-Redo as it would be without a
-copy.
+file does, since the person who made the copy decides when to renew it. It
+must still pass the content check a download would, an mmCIF data block or
+the MTZ signature, and the engine fails when it does not. An entry the copy
+lacks is requested from PDB-Redo as it would be without a copy.
 """
 
 from __future__ import annotations

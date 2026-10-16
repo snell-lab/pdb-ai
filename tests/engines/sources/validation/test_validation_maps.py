@@ -7,11 +7,11 @@ import pytest
 from fake_http import FakeResponse, FakeSession
 
 from pdbai.engines.core import EngineContext, EngineOptions, EngineServices
+from pdbai.engines.sources.validation.fetch import validation_file_url
 from pdbai.engines.sources.validation.maps import (
     VALIDATION_2FOFC_MAP_PATH,
     VALIDATION_FOFC_MAP_PATH,
     VALIDATION_MAP_ACQUISITION_ENGINE,
-    validation_map_url,
 )
 
 _GZIP = b"\x1f\x8b\x08\x00compressed"
@@ -30,7 +30,7 @@ def _context(session: FakeSession, cache_root: Path) -> EngineContext:
 
 
 def test_the_urls_follow_the_archives_layout() -> None:
-    assert validation_map_url("1ABC", "validation_2fo-fc_map_coef.cif.gz") == (
+    assert validation_file_url("1ABC", "validation_2fo-fc_map_coef.cif.gz") == (
         f"{_BASE}validation_2fo-fc_map_coef.cif.gz"
     )
 

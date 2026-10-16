@@ -225,6 +225,7 @@ def test_a_fresh_cache_is_served_without_any_request(tmp_path: Path) -> None:
     discovery, session = _discover(tmp_path)
 
     assert [r.uniprot_id for r in discovery.references] == ["CACHED"]
+    assert discovery.cached
     assert session.calls == []
 
 
@@ -317,31 +318,28 @@ def test_an_entry_without_polymer_entities_stops_after_one_request(
     assert not _cache_file(tmp_path).exists()
 
 
-def test_discovery_works_without_a_cache_directory() -> None:
-    session = FakeSession(FakeResponse(_ENTRY_PAYLOAD), FakeResponse(_ENTITY_PAYLOAD))
-
-    discovery = discover_entry_references(
-        "1ABC", session=session.as_session(), timeout=1.0, cache_directory=None
-    )
-
-    assert [r.uniprot_id for r in discovery.references] == ["P12345"]
-
-
-def test_an_invalid_pdb_id_is_rejected_before_any_request() -> None:
+def test_an_invalid_pdb_id_is_rejected_before_any_request(tmp_path: Path) -> None:
     session = FakeSession()
 
     with pytest.raises(ValueError, match="Invalid PDB ID"):
         discover_entry_references(
-            "../secret", session=session.as_session(), timeout=1.0
+            "../secret",
+            session=session.as_session(),
+            timeout=1.0,
+            cache_directory=tmp_path,
         )
 
     assert session.calls == []
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_a_complete_discovery_is_cached(tmp_path: Path) -> None:
-    _discover(tmp_path, FakeResponse(_ENTRY_PAYLOAD), FakeResponse(_ENTITY_PAYLOAD))
+    discovery, _ = _discover(
+        tmp_path, FakeResponse(_ENTRY_PAYLOAD), FakeResponse(_ENTITY_PAYLOAD)
+    )
 
     written = json.loads(_cache_file(tmp_path).read_text(encoding="utf-8"))
+    assert not discovery.cached
 
     assert [reference["uniprot_id"] for reference in written["references"]] == [
         "P12345"

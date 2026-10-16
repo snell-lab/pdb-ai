@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fake_http import FakeResponse, FakeSession
 
@@ -177,7 +179,9 @@ _OVERLAPPING_SCORES: dict[str, dict[str, float]] = {
 
 
 def _fetch_with_response_order(
-    monkeypatch: pytest.MonkeyPatch, predictions: list[dict[str, object]]
+    monkeypatch: pytest.MonkeyPatch,
+    predictions: list[dict[str, object]],
+    cache_directory: Path,
 ) -> dict[str, float]:
     session = FakeSession(
         FakeResponse(predictions),
@@ -190,20 +194,30 @@ def _fetch_with_response_order(
         return _alanines(dict(_OVERLAPPING_SCORES[requested_url]))
 
     monkeypatch.setattr(model_fetch_module, "parse_afdb_model_cif", fake_parse)
-    result = fetch_afdb_model("P12345", session=session.as_session(), timeout=1.0)
+    result = fetch_afdb_model(
+        "P12345",
+        session=session.as_session(),
+        timeout=1.0,
+        cache_directory=cache_directory,
+    )
     assert result.status == AFDB_STATUS_AVAILABLE
     return result.plddt_by_position
 
 
 def test_overlapping_fragments_resolve_the_same_way_whatever_the_api_returns(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
 
     fragment_1 = _prediction("AF-P12345-F1", start=1, end=400)
     fragment_2 = _prediction("AF-P12345-F2", start=201, end=600)
 
-    forwards = _fetch_with_response_order(monkeypatch, [fragment_1, fragment_2])
-    backwards = _fetch_with_response_order(monkeypatch, [fragment_2, fragment_1])
+    # Each order has a cache of its own, so the second is fetched as well.
+    forwards = _fetch_with_response_order(
+        monkeypatch, [fragment_1, fragment_2], tmp_path / "forwards"
+    )
+    backwards = _fetch_with_response_order(
+        monkeypatch, [fragment_2, fragment_1], tmp_path / "backwards"
+    )
 
     assert forwards == backwards
     assert forwards["300"] == 11.0, "the canonical F1 fragment wins the overlap"
@@ -228,11 +242,13 @@ def test_overlapping_fragments_resolve_the_same_way_whatever_the_api_returns(
     ids=["no CIF URL", "another accession"],
 )
 def test_a_lookup_without_a_usable_model_downloads_nothing(
-    predictions: list[dict[str, object]], status: str, reason: str
+    predictions: list[dict[str, object]], status: str, reason: str, tmp_path: Path
 ) -> None:
     session = FakeSession(FakeResponse(predictions))
 
-    result = fetch_afdb_model("P12345", session=session.as_session(), timeout=1.0)
+    result = fetch_afdb_model(
+        "P12345", session=session.as_session(), timeout=1.0, cache_directory=tmp_path
+    )
 
     assert result.status == status
     assert result.failure_reason is not None
@@ -250,7 +266,7 @@ def test_a_complex_never_joins_a_family() -> None:
 
 
 def test_a_family_member_that_scores_no_new_position_is_not_listed(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     # F2 covers only positions F1 already scored, so it supplies nothing.
     predictions = [
@@ -271,7 +287,9 @@ def test_a_family_member_that_scores_no_new_position_is_not_listed(
 
     monkeypatch.setattr(model_fetch_module, "parse_afdb_model_cif", fake_parse)
 
-    result = fetch_afdb_model("P12345", session=session.as_session(), timeout=1.0)
+    result = fetch_afdb_model(
+        "P12345", session=session.as_session(), timeout=1.0, cache_directory=tmp_path
+    )
 
     assert result.status == AFDB_STATUS_AVAILABLE
     assert result.model_ids == ["AF-P12345-F1"]
@@ -279,23 +297,29 @@ def test_a_family_member_that_scores_no_new_position_is_not_listed(
     assert set(result.model_id_by_position.values()) == {"AF-P12345-F1"}
 
 
-def test_an_accession_is_quoted_as_one_segment_of_the_api_url() -> None:
+def test_an_accession_is_quoted_as_one_segment_of_the_api_url(tmp_path: Path) -> None:
     session = FakeSession(FakeResponse(None, status_code=404))
 
-    fetch_afdb_model("P1/../x", session=session.as_session(), timeout=1.0)
+    fetch_afdb_model(
+        "P1/../x", session=session.as_session(), timeout=1.0, cache_directory=tmp_path
+    )
 
     assert session.calls[0][0] == (
         "https://alphafold.ebi.ac.uk/api/prediction/P1%2F..%2Fx"
     )
 
 
-def test_a_family_that_fails_only_to_download_reports_download_failed() -> None:
+def test_a_family_that_fails_only_to_download_reports_download_failed(
+    tmp_path: Path,
+) -> None:
     session = FakeSession(
         FakeResponse([_prediction("AF-P12345-F1")]),
         FakeResponse(None, status_code=503),
     )
 
-    result = fetch_afdb_model("P12345", session=session.as_session(), timeout=1.0)
+    result = fetch_afdb_model(
+        "P12345", session=session.as_session(), timeout=1.0, cache_directory=tmp_path
+    )
 
     assert result.status == AFDB_STATUS_DOWNLOAD_FAILED
     assert result.failure_reason == "AF-P12345-F1: download failed (HTTP 503)"

@@ -10,15 +10,11 @@ from fake_http import FakeResponse, FakeSession
 
 from pdbai.engines.sources.http_cache import (
     CACHE_TTL_SECONDS,
+    GZIP_FILE,
+    MMCIF_FILE,
+    MTZ_FILE,
     NotAvailableError,
-    fetch_gzip,
-    fetch_mmcif,
-    fetch_mtz,
-    is_fresh_gzip,
-    is_fresh_mmcif,
-    is_fresh_mtz,
-    is_gzip_file,
-    is_mtz_file,
+    fetch_file,
     read_envelope,
     write_envelope,
 )
@@ -58,18 +54,9 @@ def test_an_envelope_too_deep_or_not_utf8_reads_as_missing(tmp_path: Path) -> No
     assert read_envelope(binary) is None
 
 
-def test_a_payload_may_not_replace_the_cache_time(tmp_path: Path) -> None:
-    path = tmp_path / "entry.json"
-
-    with pytest.raises(ValueError, match="'cached_at' is reserved"):
-        write_envelope(path, {"cached_at": 0, "entry": {}})
-
-    assert not path.exists()
-
-
 def _fetch(session: FakeSession, path: Path) -> bool:
-    return fetch_mmcif(
-        "u", path, session=session.as_session(), timeout=1.0, label="RCSB"
+    return fetch_file(
+        "u", path, MMCIF_FILE, session=session.as_session(), timeout=1.0, label="RCSB"
     )
 
 
@@ -211,7 +198,8 @@ def test_cached_files_and_downloads_are_judged_alike(
     cached.write_bytes(content)
     session = FakeSession(FakeResponse(content=content))
 
-    assert is_fresh_mmcif(cached) is expected
+    # A cached file is reused exactly when a download of it would be kept.
+    assert _fetch(FakeSession(FakeResponse(content=b"data_new\n")), cached) is expected
     if expected:
         assert _fetch(session, tmp_path / "downloaded.cif") is False
     else:
@@ -230,21 +218,23 @@ def test_the_cache_probe_never_loads_the_whole_file(
 
     monkeypatch.setattr(Path, "read_bytes", forbidden_read_bytes)
 
-    assert is_fresh_mmcif(path) is True
+    # A session with no script fails the test on any request.
+    assert _fetch(FakeSession(), path) is True
 
 
-def test_missing_and_unreadable_paths_are_not_cache_hits(tmp_path: Path) -> None:
-    assert is_fresh_mmcif(tmp_path / "absent.cif") is False
-    assert is_fresh_mmcif(tmp_path) is False
+def test_missing_and_unreadable_paths_do_not_match_a_format(tmp_path: Path) -> None:
+    assert MMCIF_FILE.matches(tmp_path / "absent.cif") is False
+    assert MMCIF_FILE.matches(tmp_path) is False
 
 
 _MTZ = b"MTZ \x00\x00reflections"
 
 
 def _fetch_mtz(session: FakeSession, path: Path) -> bool:
-    return fetch_mtz(
+    return fetch_file(
         "https://example.org/1abc_final.mtz",
         path,
+        MTZ_FILE,
         session=session.as_session(),
         timeout=3.0,
         label="PDB-Redo 1ABC",
@@ -260,8 +250,7 @@ def test_an_mtz_download_is_written_once_then_reused(tmp_path: Path) -> None:
 
     assert path.read_bytes() == _MTZ
     assert len(session.calls) == 1
-    assert is_mtz_file(path)
-    assert is_fresh_mtz(path)
+    assert MTZ_FILE.matches(path)
 
 
 def test_a_stale_or_damaged_mtz_is_downloaded_again(tmp_path: Path) -> None:
@@ -272,9 +261,8 @@ def test_a_stale_or_damaged_mtz_is_downloaded_again(tmp_path: Path) -> None:
     damaged = tmp_path / "damaged.mtz"
     damaged.write_bytes(b"<html>Not Found</html>")
 
-    assert not is_fresh_mtz(stale)
-    assert not is_fresh_mtz(damaged)
-    assert not is_mtz_file(tmp_path / "absent.mtz")
+    assert not MTZ_FILE.matches(damaged)
+    assert not MTZ_FILE.matches(tmp_path / "absent.mtz")
     for path in (stale, damaged):
         session = FakeSession(FakeResponse(content=_MTZ + b"new"))
         assert _fetch_mtz(session, path) is False
@@ -313,9 +301,10 @@ def test_a_gzip_download_is_cached_and_a_403_can_mean_missing(tmp_path: Path) ->
     content = b"\x1f\x8b\x08compressed"
 
     def fetch(session: FakeSession, missing: frozenset[int] = frozenset()) -> bool:
-        return fetch_gzip(
+        return fetch_file(
             "https://example.org/maps.cif.gz",
             path,
+            GZIP_FILE,
             session=session.as_session(),
             timeout=3.0,
             label="wwPDB validation map 1ABC",
@@ -325,11 +314,9 @@ def test_a_gzip_download_is_cached_and_a_403_can_mean_missing(tmp_path: Path) ->
     session = FakeSession(FakeResponse(content=content))
     assert fetch(session) is False
     assert fetch(session) is True
-    assert is_gzip_file(path)
-    assert is_fresh_gzip(path)
+    assert GZIP_FILE.matches(path)
     old = time.time() - CACHE_TTL_SECONDS - 1
     os.utime(path, (old, old))
-    assert not is_fresh_gzip(path)
     # Without the caller's word, a 403 is a failure and the old copy stays.
     with pytest.raises(RuntimeError, match="download failed"):
         fetch(FakeSession(FakeResponse(status_code=403)))

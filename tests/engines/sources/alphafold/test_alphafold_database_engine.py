@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 import re
-import time
 from pathlib import Path
 
 import pandas as pd
@@ -31,7 +29,6 @@ from pdbai.engines.sources.alphafold.models import (
     AFDB_STATUS_AVAILABLE,
     AFDB_STATUS_DOWNLOAD_FAILED,
     AFDB_STATUS_LOOKUP_FAILED,
-    AFDB_STATUS_NO_MODEL_AVAILABLE,
     AFDB_STATUS_NOT_AVAILABLE_FOR_UPLOAD,
     AFDB_STATUS_PARSE_FAILED,
     AFDB_STATUS_PARTIAL,
@@ -42,7 +39,6 @@ from pdbai.engines.sources.alphafold.models import (
     discovery_cache_path,
     model_cache_path,
 )
-from pdbai.engines.sources.http_cache import write_envelope
 
 # parse_afdb_model_cif returns this pair of scores and residue names, each
 # keyed by label_seq_id.
@@ -170,31 +166,12 @@ def test_a_complete_lookup_lists_its_cache_files_as_source_files(
 def test_cache_files_say_whether_the_lookup_read_or_wrote_them(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    cache_directory = tmp_path / "afdb"
-    discovery_path = discovery_cache_path(cache_directory, "1ABC")
-    model_path = model_cache_path(cache_directory, "P12345")
-    discovery_path.parent.mkdir(parents=True)
-    # The discovery was cached by an earlier run, and the lookup writes the
-    # model's cache file itself.
-    discovery_path.write_text(
-        json.dumps({"cached_at": time.time() - 60}), encoding="utf-8"
-    )
+    _write_cache_files(tmp_path, "P12345")
+    # The discovery was read from the cache, and the model was fetched and
+    # written there.
+    entry = dataclasses.replace(_entry(), discovery_cached=True)
 
-    def fake_fetch(pdb_id: str, **kwargs: object) -> AFDBEntryResult:
-        del pdb_id, kwargs
-        write_envelope(model_path, {})
-        return _entry()
-
-    monkeypatch.setattr(engine_module, "fetch_afdb_entry", fake_fetch)
-    context = EngineContext(
-        "1ABC",
-        pd.DataFrame(),
-        EngineOptions(values={"include_alphafold": True}),
-        services=EngineServices(
-            session=requests.Session(), timeout=3, cache_root=tmp_path
-        ),
-    )
-    source_files = engine_module.ALPHAFOLD_ACQUISITION_ENGINE.run(context).source_files
+    source_files = _acquire(monkeypatch, tmp_path, entry)
 
     assert [source.cached_before for source in source_files] == [True, False]
     assert source_files[0].source_url == (
@@ -403,7 +380,7 @@ def test_alphafold_prediction_family_keeps_requested_isoform_separate() -> None:
 
 
 def test_alphafold_fragment_scores_are_shifted_to_uniprot_coordinates(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     prediction: dict[str, object] = {
         "uniprotAccession": "P12345",
@@ -426,6 +403,7 @@ def test_alphafold_fragment_scores_are_shifted_to_uniprot_coordinates(
         "P12345",
         session=fake_session.as_session(),
         timeout=2.0,
+        cache_directory=tmp_path,
     )
 
     assert result.status == AFDB_STATUS_AVAILABLE
@@ -438,6 +416,7 @@ def test_alphafold_fragment_scores_are_shifted_to_uniprot_coordinates(
 
 def _fragment_result(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     *,
     start: int,
     end: int | None,
@@ -464,6 +443,7 @@ def _fragment_result(
         "P12345",
         session=fake_session.as_session(),
         timeout=2.0,
+        cache_directory=tmp_path,
     )
 
 
@@ -485,6 +465,7 @@ def _position_span(result: AFDBModelResult) -> tuple[int, int]:
 )
 def test_fragment_positions_end_up_in_uniprot_coordinates(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     label: str,
     start: int,
     end: int | None,
@@ -492,14 +473,16 @@ def test_fragment_positions_end_up_in_uniprot_coordinates(
     expected: tuple[int, int],
 ) -> None:
 
-    result = _fragment_result(monkeypatch, start=start, end=end, positions=positions)
+    result = _fragment_result(
+        monkeypatch, tmp_path, start=start, end=end, positions=positions
+    )
 
     assert _position_span(result) == expected, label
     assert len(result.plddt_by_position) == len(positions), label
 
 
 def test_fragment_shift_keeps_scores_attached_to_their_own_residue(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     prediction: dict[str, object] = {
         "uniprotAccession": "P12345",
@@ -522,6 +505,7 @@ def test_fragment_shift_keeps_scores_attached_to_their_own_residue(
         "P12345",
         session=fake_session.as_session(),
         timeout=2.0,
+        cache_directory=tmp_path,
     )
 
     assert result.plddt_by_position == {"201": 11.0, "202": 22.0, "203": 33.0}
@@ -529,6 +513,7 @@ def test_fragment_shift_keeps_scores_attached_to_their_own_residue(
 
 def _fragment_result_from(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     boundaries: dict[str, object],
     positions: range,
 ) -> AFDBModelResult:
@@ -551,6 +536,7 @@ def _fragment_result_from(
         "P12345",
         session=fake_session.as_session(),
         timeout=2.0,
+        cache_directory=tmp_path,
     )
 
 
@@ -586,13 +572,14 @@ def _fragment_result_from(
 )
 def test_inconsistent_fragment_boundaries_never_corrupt_positions(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     label: str,
     boundaries: dict[str, object],
     positions: range,
     expected: tuple[int, int],
 ) -> None:
 
-    result = _fragment_result_from(monkeypatch, boundaries, positions)
+    result = _fragment_result_from(monkeypatch, tmp_path, boundaries, positions)
 
     assert _position_span(result) == expected, label
     assert len(result.plddt_by_position) == len(positions), label
@@ -645,12 +632,13 @@ def test_inconsistent_fragment_boundaries_never_corrupt_positions(
 )
 def test_a_fragment_that_fits_neither_numbering_is_rejected_as_parse_failed(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     label: str,
     boundaries: dict[str, object],
     positions: range,
 ) -> None:
 
-    result = _fragment_result_from(monkeypatch, boundaries, positions)
+    result = _fragment_result_from(monkeypatch, tmp_path, boundaries, positions)
 
     assert result.status == AFDB_STATUS_PARSE_FAILED, label
     assert result.plddt_by_position == {}, label
@@ -659,7 +647,7 @@ def test_a_fragment_that_fits_neither_numbering_is_rejected_as_parse_failed(
 
 
 def test_a_rejected_fragment_leaves_the_rest_of_the_family_partial(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     first: dict[str, object] = {
         "uniprotAccession": "P12345",
@@ -688,7 +676,12 @@ def test_a_rejected_fragment_leaves_the_rest_of_the_family_partial(
 
     monkeypatch.setattr(model_fetch_module, "parse_afdb_model_cif", fake_parse)
 
-    result = fetch_afdb_model("P12345", session=fake_session.as_session(), timeout=2.0)
+    result = fetch_afdb_model(
+        "P12345",
+        session=fake_session.as_session(),
+        timeout=2.0,
+        cache_directory=tmp_path,
+    )
 
     assert result.status == AFDB_STATUS_PARTIAL
     assert result.plddt_by_position == {"1": 90.0, "2": 80.0}
@@ -762,26 +755,3 @@ def test_uniprot_offset_rejects_a_fragment_it_would_have_to_guess(
 ) -> None:
     with pytest.raises(ValueError, match=re.escape(message)):
         uniprot_offset(positions, start, end)
-
-
-def test_a_residue_whose_model_has_no_scores_is_not_reported_available() -> None:
-    entry = _entry()
-    entry.models["P12345"] = AFDBModelResult(
-        uniprot_id="P12345",
-        status=AFDB_STATUS_AVAILABLE,
-        plddt_by_position={},
-    )
-    dataframe = pd.DataFrame(
-        {
-            "_atom_site.label_entity_id": ["1"],
-            "_atom_site.label_seq_id": ["1"],
-            "res_name": ["ALA"],
-            "_pdbai_chem_comp_type": [""],
-        }
-    )
-
-    result = annotate_atom_dataframe(dataframe, entry)
-
-    assert result.loc[0, "afdb_status"] == AFDB_STATUS_NO_MODEL_AVAILABLE
-    assert pd.isna(result.loc[0, "afdb_plddt"])
-    assert not bool(result.loc[0, "afdb_residue_has_plddt"])

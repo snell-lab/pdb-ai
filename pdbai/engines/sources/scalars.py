@@ -1,4 +1,4 @@
-"""Numbers read from source responses, with None for a value that is not one.
+"""Numbers and text read from source responses, with None for a bad value.
 
 Remote records give a number as a JSON number or as text, and a field can
 hold an empty string or text that is no number at all. The source engines
@@ -16,6 +16,9 @@ finite are refused too, since neither is a measurement.
 
 to_int neither rounds nor truncates. Reading 5.7 as 5 would change the value
 without a trace, so 5.7 reads as missing, and so does the text "5.0".
+
+Text fields are read through to_text, which strips them and returns None
+for one that is blank or not text at all.
 """
 
 from __future__ import annotations
@@ -71,4 +74,11 @@ def to_int(value: object) -> int | None:
     return None
 
 
-__all__ = ["to_float", "to_int"]
+def to_text(value: object) -> str | None:
+    """Return the value stripped, or None when it is not text or is blank."""
+    if not isinstance(value, str):
+        return None
+    return value.strip() or None
+
+
+__all__ = ["to_float", "to_int", "to_text"]

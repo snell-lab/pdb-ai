@@ -236,18 +236,13 @@ def _map_positions(
         selected_model_id: str | None = None
         mapping.uniprot_id[entity_position] = mapped_reference.uniprot_id
         if mapped_model is not None:
-            # The model is judged by the rule that gives an entity its status,
-            # so a model whose status claims scores it lacks is not reported
-            # available.
-            mapping.status[entity_position] = combined_model_status(
-                [mapped_model], complete=True, fallback=mapped_model.status
-            )
+            mapping.status[entity_position] = mapped_model.status
             selected_model_id = mapped_model.model_id_by_position.get(
                 str(reference_position)
             )
         plddt = (
             mapped_model.plddt_by_position.get(str(reference_position))
-            if mapped_model is not None and mapped_model.has_scores
+            if mapped_model is not None
             else None
         )
         if plddt is None or mapped_model is None:

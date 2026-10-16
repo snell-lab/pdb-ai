@@ -14,7 +14,8 @@ runs when that engine reads PDB-Redo's maps, which also needs the other
 three.
 
 Both source engines read a local copy of PDB-Redo's databank before they
-make a request (see mirror.py).
+make a request (see mirror.py). A file of the copy must pass the check a
+download of it would, or the engine fails.
 
 PDB-Redo has no entry for some X-ray structures, and that is not a failure.
 The source engine then returns no file, and the structure engine warns and
@@ -28,12 +29,15 @@ are empty, and a warning or the source engine's failure says why.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 from ....identifiers import normalize_pdb_id
 from ....structure import parse_mmcif_atom_rows
 from ...core import (
     STRUCTURE_METADATA,
+    ArtifactKey,
     ColumnGranularity,
     EngineContext,
     EnginePhase,
@@ -44,7 +48,13 @@ from ...core import (
     SourceFile,
     column_specs,
 )
-from ..http_cache import NotAvailableError, fetch_mmcif, fetch_mtz, is_mtz_file
+from ..http_cache import (
+    MMCIF_FILE,
+    MTZ_FILE,
+    FileFormat,
+    NotAvailableError,
+    fetch_file,
+)
 from ..map_sources import DENSITY_SOURCE_PDB_REDO, DENSITY_TOGGLE, density_reads
 from .artifacts import PDB_REDO_CIF_PATH, PDB_REDO_DATAFRAME, PDB_REDO_MTZ_PATH
 from .comparison import OUTPUT_COLUMNS, compare_with_rcsb_atoms
@@ -52,6 +62,62 @@ from .mirror import mirror_file
 
 # PDB-Redo re-refines X-ray entries against their deposited reflection data.
 _PDB_REDO_TECHNIQUES = frozenset({"x_ray_diffraction"})
+
+
+def _acquire_file(
+    context: EngineContext,
+    *,
+    file_name: str,
+    cache_name: str,
+    file_format: FileFormat,
+    artifact: ArtifactKey[Path],
+    role: str,
+) -> EngineResult:
+    """Publish an entry's PDB-Redo file under ``artifact``, if PDB-Redo has it.
+
+    ``file_name`` is PDB-Redo's name for the file and ``cache_name`` the
+    cache's, each without the entry's lower-case ID in front, as in
+    _final.mtz. The file is read from the local copy when the copy has it,
+    and is otherwise fetched into the cache's pdb_redo directory. Either way
+    it must pass the check of ``file_format``. A file of the copy that fails
+    it raises RuntimeError rather than being fetched again, since whoever
+    made the copy is the one to renew it. An answer that PDB-Redo has no
+    such file publishes nothing. Any other failed download raises
+    RuntimeError, and so does a ``context`` without network services. The
+    file is recorded as a source under ``role`` whenever this returns.
+    """
+    services = context.require_services()
+    pdb_id = normalize_pdb_id(context.pdb_id).lower()
+    label = f"PDB-Redo {pdb_id.upper()}"
+    mirrored = mirror_file(services.cache_root, pdb_id, f"{pdb_id}{file_name}")
+    if mirrored is not None:
+        if not file_format.matches(mirrored):
+            raise RuntimeError(
+                f"{label} file {mirrored} of the local copy {file_format.mismatch}"
+            )
+        return EngineResult(
+            artifacts={artifact: mirrored},
+            source_files=(SourceFile(role, mirrored, mirrored.as_uri(), True),),
+        )
+    url = f"https://pdb-redo.eu/db/{pdb_id}/{pdb_id}{file_name}"
+    path = services.cache_root / "pdb_redo" / f"{pdb_id}{cache_name}"
+    try:
+        cached = fetch_file(
+            url,
+            path,
+            file_format,
+            session=services.session,
+            timeout=services.timeout,
+            label=label,
+        )
+    except NotAvailableError:
+        # Not every X-ray entry has a PDB-Redo re-refinement. A missing one is
+        # an expected outcome, which the engine that reads the file reports.
+        return EngineResult(source_files=(SourceFile(role, path, url, False),))
+    return EngineResult(
+        artifacts={artifact: path},
+        source_files=(SourceFile(role, path, url, cached),),
+    )
 
 
 class PdbRedoAcquisitionEngine:
@@ -71,38 +137,17 @@ class PdbRedoAcquisitionEngine:
     def run(self, context: EngineContext) -> EngineResult:
         """Return the path of the entry's file, unless PDB-Redo lacks one.
 
-        Any other failed download raises RuntimeError, and so does a
-        ``context`` without network services.
+        A file of the local copy that does not open an mmCIF data block
+        raises RuntimeError, and so does any failed download but the answer
+        that PDB-Redo has no such file.
         """
-        services = context.require_services()
-        pdb_id = normalize_pdb_id(context.pdb_id).lower()
-        mirrored = mirror_file(services.cache_root, pdb_id, f"{pdb_id}_final.cif")
-        if mirrored is not None:
-            return EngineResult(
-                artifacts={PDB_REDO_CIF_PATH: mirrored},
-                source_files=(
-                    SourceFile("pdb_redo_mmcif", mirrored, mirrored.as_uri(), True),
-                ),
-            )
-        url = f"https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.cif"
-        path = services.cache_root / "pdb_redo" / f"{pdb_id}.cif"
-        try:
-            cached = fetch_mmcif(
-                url,
-                path,
-                session=services.session,
-                timeout=services.timeout,
-                label=f"PDB-Redo {pdb_id.upper()}",
-            )
-        except NotAvailableError:
-            # Not every X-ray entry has a PDB-Redo re-refinement. A missing
-            # one is an expected outcome, which the structure engine reports.
-            return EngineResult(
-                source_files=(SourceFile("pdb_redo_mmcif", path, url, False),),
-            )
-        return EngineResult(
-            artifacts={PDB_REDO_CIF_PATH: path},
-            source_files=(SourceFile("pdb_redo_mmcif", path, url, cached),),
+        return _acquire_file(
+            context,
+            file_name="_final.cif",
+            cache_name=".cif",
+            file_format=MMCIF_FILE,
+            artifact=PDB_REDO_CIF_PATH,
+            role="pdb_redo_mmcif",
         )
 
 
@@ -130,40 +175,13 @@ class PdbRedoMapAcquisitionEngine:
         RuntimeError, and so does any failed download but the answer that
         PDB-Redo has no such file.
         """
-        services = context.require_services()
-        pdb_id = normalize_pdb_id(context.pdb_id).lower()
-        mirrored = mirror_file(services.cache_root, pdb_id, f"{pdb_id}_final.mtz")
-        if mirrored is not None:
-            if not is_mtz_file(mirrored):
-                raise RuntimeError(
-                    f"PDB-Redo {pdb_id.upper()} reflection file {mirrored} of the "
-                    "local copy is not an MTZ file"
-                )
-            return EngineResult(
-                artifacts={PDB_REDO_MTZ_PATH: mirrored},
-                source_files=(
-                    SourceFile("pdb_redo_mtz", mirrored, mirrored.as_uri(), True),
-                ),
-            )
-        url = f"https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.mtz"
-        path = services.cache_root / "pdb_redo" / f"{pdb_id}_final.mtz"
-        try:
-            cached = fetch_mtz(
-                url,
-                path,
-                session=services.session,
-                timeout=services.timeout,
-                label=f"PDB-Redo {pdb_id.upper()}",
-            )
-        except NotAvailableError:
-            # As with the model, an entry PDB-Redo has not re-refined is an
-            # expected outcome, which the density engine reports.
-            return EngineResult(
-                source_files=(SourceFile("pdb_redo_mtz", path, url, False),),
-            )
-        return EngineResult(
-            artifacts={PDB_REDO_MTZ_PATH: path},
-            source_files=(SourceFile("pdb_redo_mtz", path, url, cached),),
+        return _acquire_file(
+            context,
+            file_name="_final.mtz",
+            cache_name="_final.mtz",
+            file_format=MTZ_FILE,
+            artifact=PDB_REDO_MTZ_PATH,
+            role="pdb_redo_mtz",
         )
 
 

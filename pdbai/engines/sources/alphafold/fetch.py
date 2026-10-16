@@ -28,7 +28,6 @@ from .models import (
     AFDB_STATUS_NO_MODEL_AVAILABLE,
     AFDB_STATUS_NO_UNIPROT_MAPPING,
     AFDB_STATUS_NOT_AVAILABLE_FOR_UPLOAD,
-    AFDB_STATUS_PARTIAL,
     AFDBEntryResult,
     AFDBModelResult,
     combined_model_status,
@@ -41,7 +40,7 @@ def fetch_afdb_entry(
     *,
     session: requests.Session,
     timeout: float,
-    cache_directory: Path | None = None,
+    cache_directory: Path,
     fetch_models: bool = True,
     entry_json: Mapping[str, object] | None = None,
 ) -> AFDBEntryResult:
@@ -51,8 +50,10 @@ def fetch_afdb_entry(
     it. With ``fetch_models`` false, only the mapping is looked up, and a
     mapped entry gets the status mapping_only. An entry without references
     gets no_uniprot_mapping, or lookup_failed when a request to RCSB failed.
-    An invalid PDB ID raises ValueError. Every other failure is reported in
-    the result's status and failure reason.
+    The discovery and the models are cached under ``cache_directory``, by
+    the rules references.py and model_fetch.py give. An invalid PDB ID
+    raises ValueError. Every other failure is reported in the result's
+    status and failure reason.
     """
     discovery = discover_entry_references(
         pdb_id,
@@ -106,15 +107,9 @@ def fetch_afdb_entry(
         else AFDB_STATUS_MAPPING_ONLY
     )
     for accession, model in models.items():
-        if model.status == AFDB_STATUS_AVAILABLE and model.has_scores:
+        if model.status == AFDB_STATUS_AVAILABLE:
             continue
-        # A status that claims scores the model does not have is not the
-        # shortfall, so the missing scores are named instead.
-        claims_scores = model.status in {AFDB_STATUS_AVAILABLE, AFDB_STATUS_PARTIAL}
-        if claims_scores and not model.has_scores:
-            detail = f"{accession}: no pLDDT scores"
-        else:
-            detail = f"{accession}: {model.status}"
+        detail = f"{accession}: {model.status}"
         if model.failure_reason:
             detail += f" ({model.failure_reason})"
         failure_parts.append(detail)
@@ -129,6 +124,7 @@ def fetch_afdb_entry(
         protein_entity_ids=discovery.protein_entity_ids,
         unmapped_protein_entity_ids=discovery.unmapped_protein_entity_ids,
         sequence_clusters=discovery.sequence_clusters,
+        discovery_cached=discovery.cached,
     )
 
 

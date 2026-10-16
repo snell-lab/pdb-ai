@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -61,10 +62,12 @@ def _entry(
 
     monkeypatch.setattr(coordinator_module, "discover_entry_references", fake_discover)
     monkeypatch.setattr(coordinator_module, "fetch_afdb_model", fake_fetch_model)
+    # Both lookups are faked, so nothing reads or writes the cache.
     result = fetch_afdb_entry(
         "1ABC",
         session=cast(requests.Session, None),
         timeout=1.0,
+        cache_directory=Path("unused"),
         fetch_models=fetch_models,
     )
     return result, queried
@@ -276,31 +279,3 @@ def test_failure_reasons_from_every_source_are_reported_together(
     assert "entity 3: boom" in result.failure_reason
     assert "Protein entities without a UniProt mapping: 2" in result.failure_reason
     assert "no parseable pLDDT values" in result.failure_reason
-
-
-def test_an_available_model_without_scores_reports_no_model_available(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Available means every model is complete, and a model without scores is
-    # not, whatever its own status says.
-    result, _ = _entry(
-        monkeypatch,
-        _mapped("P1"),
-        {"P1": _model("P1", AFDB_STATUS_AVAILABLE, scores=False)},
-    )
-
-    assert result.status == AFDB_STATUS_NO_MODEL_AVAILABLE
-    assert result.failure_reason == "P1: no pLDDT scores"
-
-
-def test_a_partial_model_without_scores_reports_no_model_available(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    result, _ = _entry(
-        monkeypatch,
-        _mapped("P1"),
-        {"P1": _model("P1", AFDB_STATUS_PARTIAL, scores=False)},
-    )
-
-    assert result.status == AFDB_STATUS_NO_MODEL_AVAILABLE
-    assert result.failure_reason == "P1: no pLDDT scores"

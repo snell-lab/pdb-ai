@@ -1,7 +1,8 @@
 """The engines that fetch an entry's records from remote databases.
 
-scalars.py reads numbers out of responses. A value that is not a plain
-decimal number reads as None, so one malformed field leaves one cell empty.
+scalars.py reads numbers and text out of responses. A value that is not a
+plain decimal number reads as None, so one malformed field leaves one cell
+empty.
 
 http_cache.py keeps every response and downloaded file on disk and decides
 when one is too old to reuse. Its module docstring sets out that policy.

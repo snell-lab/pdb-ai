@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 from urllib.parse import quote, urlparse
@@ -350,7 +351,8 @@ def _cached_model(cache_path: Path, accession: str) -> AFDBModelResult | None:
     """Return the complete model cached for the accession, or None.
 
     A file that is not a complete model with scores, and one that names
-    another accession, count as missing.
+    another accession, count as missing. The model returned is marked
+    cached.
     """
     cached = read_envelope(cache_path)
     model_data = optional_object_dict(cached.get("model")) if cached else None
@@ -365,7 +367,7 @@ def _cached_model(cache_path: Path, accession: str) -> AFDBModelResult | None:
         or model.uniprot_id.lower() != accession.lower()
     ):
         return None
-    return model
+    return replace(model, cached=True)
 
 
 def fetch_afdb_model(
@@ -373,7 +375,7 @@ def fetch_afdb_model(
     *,
     session: requests.Session,
     timeout: float,
-    cache_directory: Path | None = None,
+    cache_directory: Path,
 ) -> AFDBModelResult:
     """Fetch the AlphaFold models of a UniProt accession and merge their pLDDT.
 
@@ -383,21 +385,17 @@ def fetch_afdb_model(
     returned no model file. download_failed and parse_failed mean that no
     model in the family gave a score. When both happened, parse_failed is
     reported. A family that lost a member but still gave scores is partial.
-    With ``cache_directory`` None, nothing is cached.
+    A complete model is read from and written to the cache under
+    ``cache_directory``, and the result says whether it was read.
     """
     accession = uniprot_id.strip()
     if not accession:
         return AFDBModelResult("", AFDB_STATUS_NO_UNIPROT_MAPPING)
 
-    cache_path = (
-        model_cache_path(cache_directory, accession)
-        if cache_directory is not None
-        else None
-    )
-    if cache_path is not None:
-        cached_model = _cached_model(cache_path, accession)
-        if cached_model is not None:
-            return cached_model
+    cache_path = model_cache_path(cache_directory, accession)
+    cached_model = _cached_model(cache_path, accession)
+    if cached_model is not None:
+        return cached_model
 
     # The accession comes from a remote record, so it is quoted as one path
     # segment rather than trusted to be one.
@@ -513,7 +511,7 @@ def fetch_afdb_model(
         source_urls=list(dict.fromkeys(source_urls)),
         failure_reason="; ".join(failures) if failures else None,
     )
-    if cache_path is not None and result.status == AFDB_STATUS_AVAILABLE:
+    if result.status == AFDB_STATUS_AVAILABLE:
         write_envelope(cache_path, {"model": result.to_dict()})
     return result
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pdbai.engines.sources.scalars import to_float, to_int
+from pdbai.engines.sources.scalars import to_float, to_int, to_text
 
 
 @pytest.mark.parametrize(
@@ -113,3 +113,21 @@ def test_to_float_refuses_text_python_reads_but_sources_do_not_write(
     value: str,
 ) -> None:
     assert to_float(value) is None
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (" Rotating anode ", "Rotating anode"),
+        ("OUTLIER", "OUTLIER"),
+        ("", None),
+        ("   ", None),
+        (None, None),
+        (5, None),
+        (["a"], None),
+    ],
+)
+def test_to_text_strips_text_and_refuses_blanks_and_other_values(
+    value: object, expected: str | None
+) -> None:
+    assert to_text(value) == expected

@@ -21,14 +21,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-from ..scalars import to_float
-
-
-def _text(value: str | None) -> str | None:
-    """Return an attribute's trimmed text, or None if it is absent or blank."""
-    if value is None:
-        return None
-    return value.strip() or None
+from ..scalars import to_float, to_text
 
 
 def parse_validation_xml(xml_bytes: bytes) -> dict[str, object]:
@@ -72,19 +65,19 @@ def parse_validation_xml(xml_bytes: bytes) -> dict[str, object]:
     # subgroup replaces the kept one only when the kept one is neither.
     keys_with_primary_conformer: set[str] = set()
     for subgroup in subgroups:
-        model = _text(subgroup.get("model")) or "1"
-        chain = _text(subgroup.get("chain"))
-        residue_number = _text(subgroup.get("resnum"))
-        insertion_code = _text(subgroup.get("icode")) or ""
+        model = to_text(subgroup.get("model")) or "1"
+        chain = to_text(subgroup.get("chain"))
+        residue_number = to_text(subgroup.get("resnum"))
+        insertion_code = to_text(subgroup.get("icode")) or ""
         if chain is None or residue_number is None:
             continue
         key = f"{model}:{chain}:{residue_number}{insertion_code}"
-        altcode = _text(subgroup.get("altcode")) or ""
+        altcode = to_text(subgroup.get("altcode")) or ""
         values: dict[str, object] = {
             "rscc": to_float(subgroup.get("rscc")),
             "rsr": to_float(subgroup.get("rsr")),
-            "rama_class": _text(subgroup.get("rama")),
-            "rotamer_class": _text(subgroup.get("rota")),
+            "rama_class": to_text(subgroup.get("rama")),
+            "rotamer_class": to_text(subgroup.get("rota")),
         }
         if altcode:
             residues.setdefault(f"{key}:{altcode}", values)

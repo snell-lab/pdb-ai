@@ -26,8 +26,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
-import numpy as np
-
 from ....json_values import object_dict, object_list, optional_object_dict
 from ..scalars import to_float, to_int
 
@@ -64,7 +62,7 @@ def model_cache_path(cache_directory: Path, accession: str) -> Path:
 def plddt_value(value: object) -> float | None:
     """Return a pLDDT score, or None unless it is finite and from 0 to 100."""
     number = to_float(value)
-    if number is None or not np.isfinite(number) or number < 0.0 or number > 100.0:
+    if number is None or number < 0.0 or number > 100.0:
         return None
     return number
 
@@ -170,7 +168,10 @@ class AFDBModelResult:
     each scored position, upper case, where the model file gives one.
     ``model_ids`` and ``source_urls`` list every model that supplied a
     score, in the order the family was ranked. ``failure_reason`` explains
-    each model of the family that supplied nothing.
+    each model of the family that supplied nothing. A result fetch_afdb_model
+    returns has scores when its status is available or partial, and none
+    otherwise. ``cached`` says whether the result was read from the cache
+    rather than fetched, and is not itself cached.
     """
 
     uniprot_id: str
@@ -181,13 +182,12 @@ class AFDBModelResult:
     model_ids: list[str] = field(default_factory=list[str])
     source_urls: list[str] = field(default_factory=list[str])
     failure_reason: str | None = None
+    cached: bool = False
 
     @property
     def has_scores(self) -> bool:
         """Return whether there are pLDDT scores to map, complete or not."""
-        return self.status in {AFDB_STATUS_AVAILABLE, AFDB_STATUS_PARTIAL} and bool(
-            self.plddt_by_position
-        )
+        return bool(self.plddt_by_position)
 
     def to_dict(self) -> dict[str, object]:
         """Return the result as JSON-ready values for the cache."""
@@ -259,9 +259,7 @@ def combined_model_status(
     model was fetched and is complete. It is partial when any model has
     scores. When every model failed the same way, that failure is the
     status, but only if ``complete`` is true. An unmapped protein did not
-    fail that way. A model whose status is available or partial but which
-    has no scores did not fail in a way its status names, so it never sets
-    the status. In every other case the status is no_model_available, or
+    fail that way. In every other case the status is no_model_available, or
     ``fallback`` when no model was fetched at all.
     """
     known = [model for model in models if model is not None]
@@ -269,20 +267,13 @@ def combined_model_status(
         complete
         and known
         and len(known) == len(models)
-        and all(
-            model.status == AFDB_STATUS_AVAILABLE and model.has_scores
-            for model in known
-        )
+        and all(model.status == AFDB_STATUS_AVAILABLE for model in known)
     ):
         return AFDB_STATUS_AVAILABLE
     if any(model.has_scores for model in known):
         return AFDB_STATUS_PARTIAL
     statuses = {model.status for model in known}
-    if (
-        complete
-        and len(statuses) == 1
-        and statuses.isdisjoint({AFDB_STATUS_AVAILABLE, AFDB_STATUS_PARTIAL})
-    ):
+    if complete and len(statuses) == 1:
         return next(iter(statuses))
     return AFDB_STATUS_NO_MODEL_AVAILABLE if known else fallback
 
@@ -314,6 +305,8 @@ class AFDBEntryResult:
     proteins, and ``unmapped_protein_entity_ids`` those of them with no
     UniProt sequence. ``sequence_clusters`` holds the sequence clusters of
     every polymer entity RCSB answered for, proteins or not.
+    ``discovery_cached`` says whether the references were read from the
+    cache rather than asked of RCSB.
     """
 
     pdb_id: str
@@ -331,6 +324,7 @@ class AFDBEntryResult:
     sequence_clusters: SequenceClusters = field(
         default_factory=dict[str, dict[str, str]]
     )
+    discovery_cached: bool = False
 
 
 @dataclass(frozen=True)
@@ -340,7 +334,8 @@ class AFDBReferenceDiscovery:
     ``failed_entity_ids`` lists the entities RCSB could not be asked about.
     ``failure_reason`` joins their errors, or holds the one error that
     stopped discovery for the whole entry. ``sequence_clusters`` holds the
-    sequence clusters of every entity RCSB answered for.
+    sequence clusters of every entity RCSB answered for. ``cached`` says
+    whether the discovery was read from the cache rather than asked of RCSB.
     """
 
     references: list[AFDBEntityReference] = field(
@@ -353,6 +348,7 @@ class AFDBReferenceDiscovery:
     sequence_clusters: SequenceClusters = field(
         default_factory=dict[str, dict[str, str]]
     )
+    cached: bool = False
 
     @property
     def complete(self) -> bool:

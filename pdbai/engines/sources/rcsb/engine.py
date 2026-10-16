@@ -20,7 +20,7 @@ from ...core import (
     EngineSpec,
     SourceFile,
 )
-from ..http_cache import fetch_mmcif
+from ..http_cache import MMCIF_FILE, fetch_file
 
 
 class RcsbAcquisitionEngine:
@@ -48,9 +48,10 @@ class RcsbAcquisitionEngine:
         pdb_id = normalize_pdb_id(context.pdb_id).lower()
         url = f"https://files.rcsb.org/download/{pdb_id}.cif"
         path = services.cache_root / "rcsb" / f"{pdb_id}.cif"
-        cached = fetch_mmcif(
+        cached = fetch_file(
             url,
             path,
+            MMCIF_FILE,
             session=services.session,
             timeout=services.timeout,
             label=f"RCSB {pdb_id.upper()}",

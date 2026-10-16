@@ -235,7 +235,19 @@ def _cached_discovery(cache_path: Path) -> AFDBReferenceDiscovery | None:
         references=references,
         protein_entity_ids=str_list(cached.get("protein_entity_ids")),
         sequence_clusters=sequence_clusters,
+        cached=True,
     )
+
+
+def polymer_entity_url(pdb_id: str, entity_id: str) -> str:
+    """Return the RCSB Data API URL of one polymer entity of an entry.
+
+    The entity identifier comes from a remote record, so it is quoted as one
+    path segment rather than trusted to be one. Raise ValueError when
+    ``pdb_id`` is not a PDB ID.
+    """
+    pdb_lower = normalize_pdb_id(pdb_id).lower()
+    return f"{RCSB_POLYMER_ENTITY_URL}{pdb_lower}/{quote(entity_id, safe='')}"
 
 
 def discover_entry_references(
@@ -243,30 +255,26 @@ def discover_entry_references(
     *,
     session: requests.Session,
     timeout: float,
-    cache_directory: Path | None = None,
+    cache_directory: Path,
     entry_json: Mapping[str, object] | None = None,
 ) -> AFDBReferenceDiscovery:
     """Return the UniProt references of every polymer entity in a PDB entry.
 
     Pass ``entry_json``, the RCSB entry record, when the caller already has
-    it. That saves fetching it again. With ``cache_directory`` None, no
-    cache is read or written. An invalid PDB ID raises ValueError. Any
-    other failure is reported in the discovery's failure_reason and
-    failed_entity_ids. An entry record without container identifiers is
-    such a failure, while one whose identifiers list no polymer entity is a
-    complete discovery with no reference.
+    it. That saves fetching it again. The discovery is read from and
+    written to the cache under ``cache_directory``, and says whether it was
+    read. An invalid PDB ID raises ValueError. Any other failure is
+    reported in the discovery's failure_reason and failed_entity_ids. An
+    entry record without container identifiers is such a failure, while
+    one whose identifiers list no polymer entity is a complete discovery
+    with no reference.
     """
     normalized_id = normalize_pdb_id(pdb_id)
     pdb_lower = normalized_id.lower()
-    cache_path = (
-        discovery_cache_path(cache_directory, pdb_lower)
-        if cache_directory is not None
-        else None
-    )
-    if cache_path is not None:
-        cached = _cached_discovery(cache_path)
-        if cached is not None:
-            return cached
+    cache_path = discovery_cache_path(cache_directory, pdb_lower)
+    cached = _cached_discovery(cache_path)
+    if cached is not None:
+        return cached
 
     try:
         if entry_json is None:
@@ -296,13 +304,10 @@ def discover_entry_references(
         entity_errors: list[str] = []
         sequence_clusters: SequenceClusters = {}
         for entity_id in entity_ids:
-            # The identifier comes from a remote record, so it is quoted as
-            # one path segment rather than trusted to be one.
-            entity_url = (
-                f"{RCSB_POLYMER_ENTITY_URL}{pdb_lower}/{quote(entity_id, safe='')}"
-            )
             try:
-                response = session.get(entity_url, timeout=timeout)
+                response = session.get(
+                    polymer_entity_url(pdb_lower, entity_id), timeout=timeout
+                )
                 response.raise_for_status()
                 entity_json = optional_object_dict(cast(object, response.json()))
                 if entity_json is None:
@@ -324,12 +329,7 @@ def discover_entry_references(
                 failed_entity_ids.append(entity_id)
                 entity_errors.append(f"entity {entity_id}: {exception}")
 
-        if (
-            cache_path is not None
-            and references
-            and not unmapped_protein_entity_ids
-            and not entity_errors
-        ):
+        if references and not unmapped_protein_entity_ids and not entity_errors:
             write_envelope(
                 cache_path,
                 {
@@ -359,4 +359,5 @@ __all__ = [
     "discover_entry_references",
     "entity_is_protein",
     "parse_entity_references",
+    "polymer_entity_url",
 ]
