@@ -18,7 +18,7 @@ authors:
   - given-names: "Nicolas"
     family-names: "Rolfe"
     email: nrolfe@proton.me
-repository-code: "https://github.com/dmsellit/pdb-ai"
+repository-code: "https://github.com/snell-lab/pdb-ai"
 license: Apache-2.0
 version: "1.0.0"
 keywords:

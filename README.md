@@ -63,7 +63,7 @@ how every value was obtained.
 PDB-AI requires Python 3.12 or later. Run it from a cloned repository.
 
 ```bash
-git clone https://github.com/dmsellit/pdb-ai.git
+git clone https://github.com/snell-lab/pdb-ai.git
 cd pdb-ai
 python -m venv .venv
 ```

@@ -36,7 +36,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Recorded when the checkout has no origin remote, as when it was unpacked
 # from an archive. It repeats the URL in pyproject.toml, because the project
 # is never installed and importlib.metadata has no copy of it to read.
-_REPOSITORY_URL = "https://github.com/dmsellit/pdb-ai"
+_REPOSITORY_URL = "https://github.com/snell-lab/pdb-ai"
 
 
 def _iso_utc(timestamp: float) -> str:

@@ -98,7 +98,7 @@ def test_session_records_no_git_state_outside_a_repository() -> None:
 
     assert code == {
         "application": "PDB-AI",
-        "repository": "https://github.com/dmsellit/pdb-ai",
+        "repository": "https://github.com/snell-lab/pdb-ai",
         "git_commit": None,
         "git_branch": None,
         "git_dirty": None,
