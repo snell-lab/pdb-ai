@@ -10,6 +10,7 @@ import pytest
 
 from pdbai.engines.analyses.density import DENSITY_ENGINE
 from pdbai.engines.analyses.density import compute as compute_module
+from pdbai.engines.analyses.density.cell import read_cell_parameters
 from pdbai.engines.analyses.density.columns import (
     DENSITY_COLUMNS,
     PDB_REDO_COLUMN_NAMES,
@@ -29,7 +30,6 @@ from pdbai.engines.analyses.density.constants import (
     MAP_MIN_SAMPLE_RATE,
     MAP_SAMPLE_RATE,
 )
-from pdbai.engines.analyses.site_geometry import read_cell_parameters
 from pdbai.engines.catalog import get_engine_registry
 from pdbai.engines.compatibility import require_compatible_options
 from pdbai.engines.core import ColumnGranularity, EngineContext, EngineOptions

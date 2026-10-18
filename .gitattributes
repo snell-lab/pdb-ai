@@ -1,7 +1,2 @@
 # The bundled RABDAM reference is provenance-locked, so line-ending conversion would invalidate it.
 pdbai/engines/analyses/rabdam/rabdam_custom_bnet_reference.csv binary
-# The bundled metal-site reference tables are provenance-locked, so line-ending conversion would invalidate them.
-pdbai/engines/analyses/metal_sites/metal_donor_distances.txt binary
-pdbai/engines/analyses/metal_sites/metallocofactors.txt binary
-# The bundled radiolysis rate constants are provenance-locked, so line-ending conversion would invalidate them.
-pdbai/engines/analyses/residue_sites/radiolysis_rate_constants.csv binary

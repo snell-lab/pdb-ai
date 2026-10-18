@@ -6,9 +6,7 @@ structures into consistent atom-, residue-, chain-, and structure-level data.
 
 The pipeline preserves RCSB mmCIF records and enriches them through modular
 engines. Current analysis engines emphasize radiation-damage metrics, solvent
-accessibility, electron density at atoms, and the geometry of disulfides,
-metal sites, radiation-sensitive residue groups, selenium and halogen atoms,
-and cofactors, and the surroundings of each sensitive group.
+accessibility, and electron density at atoms.
 Data-source engines add PDB-Redo comparisons, map coefficients from
 PDB-Redo and the wwPDB, wwPDB validation data, UniProt mappings, and AlphaFold
 confidence scores. The engine system can support additional structural biology analyses
@@ -30,7 +28,7 @@ the data. Three rules follow from that:
   filter.
 - **Columns record facts about an entry.** Anything readable from the archive
   record or the model, reusable beyond one study, is a column. The engines
-  compute measurements, such as a disulfide's S–S distance or an atom's BDamage,
+  compute measurements, such as an atom's BDamage or its solvent accessibility,
   and those are facts too. A derived flag is one only when its rule is fixed,
   documented, and sits beside its evidence.
 - **The analysis makes a study's choices.** Cohort labels, quality thresholds,
@@ -52,9 +50,8 @@ how every value was obtained.
 - Write one flat CSV or linked atom, residue, chain, structure, and citation
   tables.
 - Extend the pipeline through registered source and analysis engines.
-- Use the current SASA, RABDAM, density, disulfide, metal-site, residue-site,
-  selenium and halogen, cofactor, site-environment, and PDB-Redo engines when those features
-  apply.
+- Use the current SASA, RABDAM, density, and PDB-Redo engines when those
+  features apply.
 - Resume interrupted runs from per-structure partial files.
 - Record source files, hashes, software versions, settings, and run outcomes.
 
@@ -229,7 +226,6 @@ fields.
 - [Scientific methods](docs/scientific-methods.md)
 - [Data sources and limitations](docs/data-sources.md)
 - [Architecture](docs/architecture.md)
-- [Radiation-damage study plan](docs/plans/radiation-damage-study.md)
 
 ## Reproducibility
 

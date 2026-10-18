@@ -97,8 +97,7 @@ it.
 - **Data sources & engines panel.** It is generated from the settings each
   engine declares, the same declarations the command line and the JSON API use.
   It holds a checkbox per engine (PDB-Redo comparison, RABDAM, SASA, electron
-  density at atoms, Disulfides, Metal sites, Residue sites, Selenium and halogens,
-  Cofactors, Site environment, AlphaFold Database, UniProt, and wwPDB validation) and the
+  density at atoms, AlphaFold Database, UniProt, and wwPDB validation) and the
   dataset-shape
   dropdown. The settings that refine an engine (RABDAM's source, and SASA's grid
   mode, point count, and bound-context policy, and the density engine's map

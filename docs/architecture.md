@@ -106,13 +106,8 @@ filter on. They are not techniques.
   is read from `_software` and `tls_group_count` from `_pdbx_refine_tls`.
 - **Relationships between atoms go in engine tables.** An annotation engine's
   `EngineSpec` can declare `TableSpec` records for data with many atoms per row,
-  such as the two cysteines of a disulfide, which the disulfide engine writes to
-  its `disulfides` table, or a metal and its donor atoms, which the metal-site
-  engine writes to `metal_sites`, `metal_ligand_bonds`, and
-  `metal_metal_distances`. The residue-site,
-  selenium and halogen, cofactor, and site-environment engines write
-  `residue_sites`, `selenium_halogen_sites`, `cofactor_sites`, and
-  `site_environment` in the same way. `EngineResult.tables` carries the rows. Before any
+  such as a pair of bonded atoms or a metal and its donor atoms. None of the
+  current built-in engines declares one. `EngineResult.tables` carries the rows. Before any
   atom column merges, the coordinator rejects undeclared tables or columns and
   missing key or link columns, then casts every column to its declared type,
   then rejects missing or duplicate keys and values outside a column's
@@ -276,17 +271,9 @@ pdb-ai/
 │   │   │   ├── alphafold/               # UniProt mapping and AFDB pLDDT
 │   │   │   └── validation/              # wwPDB validation reports and maps
 │   │   └── analyses/                    # Structural analysis engines
-│   │       ├── site_geometry.py         # Atom arrays, geometry, and the unit cell for the site engines
-│   │       ├── struct_conn.py           # Deposited _struct_conn records for the site engines
-│   │       ├── cofactors/               # Flavins, tetrapyrroles, chromophores, retinal
 │   │       ├── density/                 # PDB-Redo map density at every atom
-│   │       ├── disulfides/              # Disulfide pairs from every conformer
-│   │       ├── selenium_halogens/       # Selenium and halogen atoms
-│   │       ├── metal_sites/             # Metal atoms, donors, and bond distances
 │   │       ├── rabdam/                  # rabdam-custom adapter, Bnet reference
-│   │       ├── residue_sites/           # Carboxylates, Met, Cys, Tyr, Trp, His, controls, rate constants
-│   │       ├── sasa/                    # Solvent accessibility (SASA, RASA)
-│   │       └── site_environment/        # Surroundings of each residue site
+│   │       └── sasa/                    # Solvent accessibility (SASA, RASA)
 │   ├── runs/                            # Persisted runs
 │   │   ├── state.py                     # Manifest, entry log, lock, resume checks
 │   │   ├── storage.py                   # Run directory layout and name checks

@@ -89,20 +89,14 @@ kept.
 An engine can record relationships between atoms, such as a metal and its
 ligands or the two cysteines of a disulfide. These records do not fit one row
 per atom, so the engine declares its own tables (`TableSpec`) instead of adding
-atom columns. The built-in tables are `disulfides`, written by the [disulfide
-engine](#disulfides), and `metal_sites`, `metal_ligand_bonds`, and
-`metal_metal_distances`, written by the
-[metal-site engine](#metal-sites), and `residue_sites`, `selenium_halogen_sites`,
-`cofactor_sites`, and `site_environment`, written by the [residue-site](#residue-sites),
-[selenium and halogen](#selenium-and-halogens), [cofactor](#cofactors), and
-[site-environment](#site-environment) engines. The rules below
-apply to every engine table.
+atom columns. None of the current built-in engines declares a table, but the
+rules below apply to every engine table an engine adds.
 Engine tables are
 separate files in both output shapes, named after the primary table's file, as
 in `pdb_atom_site_dataset_<table>.csv` next to `pdb_atom_site_dataset.csv`,
 whether that is the flat file or the first of the five star-schema tables. An
 engine can write tables and atom columns at the same time. Atoms then carry at
-most a link column back to their site row, such as `disulfide_site_id`.
+most a link column back to their site row, such as `<table>_site_id`.
 
 Every engine table follows the same rules:
 
@@ -121,9 +115,9 @@ Every engine table follows the same rules:
   unique within the table.
 - **Links.** Link columns join a row to the atom, residue, chain, or structure
   level of the dataset, or to another table of the same engine (for example,
-  `metal_ligand_bonds.site_id` → `metal_sites.site_id`). Where names
+  a bonds table's `site_id` → its sites table's `site_id`). Where names
   differ, the link names the target columns. A second atom whose key columns
-  carry a prefix, such as `partner_` in the disulfides table, joins through
+  carry a prefix, such as `partner_`, joins through
   `partner_chain_id` → `chain_id`, `partner_ins_code` →
   `_atom_site.pdbx_PDB_ins_code`, `partner_altloc` → `_atom_site.label_alt_id`,
   and so on.
@@ -153,7 +147,7 @@ entry for each table.
 
 When reading a table back, pass the declared types, which the manifest lists,
 with `keep_default_na=False`, `na_values=[""]`, and
-`float_precision="round_trip"`, as the [disulfides example](#disulfides) does.
+`float_precision="round_trip"`.
 `keep_default_na=False` keeps codes such as the element `NA` from reading as
 missing, and `float_precision="round_trip"` reads every number back as the value
 that was written, where the default parser can change the last digit.
@@ -172,8 +166,8 @@ selection](cli.md#technique-selection)).
 | ID | Name | Purpose | Requires engines |
 |----|------|---------|-------------------|
 | `all` | All Columns | No filtering. The base tables keep every column the run writes, namely each `_atom_site` item, each item of a one-row mmCIF category repeated on every atom, the parser's derived and metadata columns, and the columns of every engine the run enables. It switches no engine on. | none |
-| `research_ready` | Research-Ready | The default for analysis. Keeps atom identity, B factors and anisotropic displacement parameters, experimental metadata, RABDAM's BDamage, packing density, and Bnet scores, solvent accessibility, disulfide, metal, residue, and selenium and halogen sites, the UniProt mapping, AlphaFold pLDDT, and wwPDB validation metrics. Of the raw mmCIF fields, only the identity items and the B factor remain. | RABDAM, SASA, disulfides, metal sites, residue sites, selenium and halogens, AlphaFold, UniProt, validation |
-| `radiation_sensitivity` | Radiation Sensitivity | Features for models of radiation-damage susceptibility. Keeps atom identity, B factors and anisotropic displacement parameters, RABDAM's BDamage, packing density, and Bnet scores, solvent accessibility, electron density at atoms, disulfide, metal, residue, selenium and halogen, and cofactor sites, the surroundings of each residue site, data-quality and wwPDB validation metrics, radiation dose and collection conditions, and the UniProt mapping. | RABDAM, SASA, density, disulfides, metal sites, residue sites, selenium and halogens, cofactors, site environment, UniProt, validation |
+| `research_ready` | Research-Ready | The default for analysis. Keeps atom identity, B factors and anisotropic displacement parameters, experimental metadata, RABDAM's BDamage, packing density, and Bnet scores, solvent accessibility, the UniProt mapping, AlphaFold pLDDT, and wwPDB validation metrics. Of the raw mmCIF fields, only the identity items and the B factor remain. | RABDAM, SASA, AlphaFold, UniProt, validation |
+| `radiation_sensitivity` | Radiation Sensitivity | Features for models of radiation-damage susceptibility. Keeps atom identity, B factors and anisotropic displacement parameters, RABDAM's BDamage, packing density, and Bnet scores, solvent accessibility, electron density at atoms, data-quality and wwPDB validation metrics, radiation dose and collection conditions, and the UniProt mapping. | RABDAM, SASA, density, UniProt, validation |
 | `ml_minimal` | ML Minimal | The smallest complete feature set for training and inference. Keeps atom identity, B factors and their anisotropy summaries, resolution and R factors, the technique and radiation source, RABDAM's damage scores, relative solvent accessibility, and the real-space fit and Ramachandran class from wwPDB validation. Of the raw mmCIF fields, only the identity items and the B factor remain. | RABDAM, SASA, validation |
 | `structure_quality` | Structure Quality | Experimental metadata and quality indicators for choosing structures before training. Keeps atom identity and B factors, resolution, R factors, data-collection statistics, radiation dose, crystallization conditions, the wwPDB clashscore and geometry outliers, RABDAM's structure-level Bnet and coverage, and the UniProt mapping. | RABDAM, UniProt, validation |
 
@@ -542,299 +536,6 @@ The atom table keeps one conformer of each residue, so the values describe that
 conformer. An atom that has moved between the two models is told apart by the
 [PDB-Redo comparison](#pdb-redo-comparison) columns, which
 `--include-pdb-redo` adds.
-
-### Disulfides
-
-Requires `--include-disulfides` (off by default). The engine adds one atom
-column and writes the `disulfides` [engine table](#engine-tables), with one row
-per candidate disulfide in one model. A candidate is a pair of cysteines that a
-deposited record joins, or whose SG atoms lie at most 3.0 Å apart, and a row
-does not assert a bond. How pairs are found and measured, and what the rows of a
-large run were, are described under
-[Disulfides](scientific-methods.md#disulfides).
-
-| Column | Description |
-|--------|-------------|
-| `disulfide_site_id` | Text. The atom's own `site_id` when it is the [representative SG](scientific-methods.md#representative-conformers) of a cysteine in the `disulfides` table, and missing on every other atom. |
-
-The `disulfides` table is keyed by `site_id` and `partner_site_id`, and each of
-the two sets of site key columns links to the atom level, the second with the
-role `partner`. The two residues of a row are ordered by chain, then residue
-number (whole numbers in numeric order, before any other), then insertion code.
-The first fills the unprefixed columns and the second the `partner_` ones. Rows
-are ordered by model and then by those keys, so a rerun gives the same table.
-The table has 29 columns.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `site_id` | string | The first residue's representative SG, as `entry:model:chain:residue:insertion:atom:altloc`. |
-| `pdb_id`, `chain_id`, `res_num`, `ins_code`, `res_name`, `atom_name`, `altloc` | string | The parts of `site_id`, with the residue name. `atom_name` is always `SG`. Each holds what the atom table holds for the same atom. `res_name` is the author residue name, or the label one where the file gives no author name, and `chain_id` and `res_num` are label identifiers for a structure whose `residue_numbering` is `label` (see [Identifiers](#identifiers)). |
-| `model_num` | Int64 | Coordinate-model number. |
-| `partner_site_id` | string | The second residue's representative SG. |
-| `partner_pdb_id`, `partner_chain_id`, `partner_res_num`, `partner_ins_code`, `partner_res_name`, `partner_atom_name`, `partner_altloc` | string | The parts of `partner_site_id`, with the residue name. `partner_pdb_id` always equals `pdb_id`. |
-| `partner_model_num` | Int64 | Always equals `model_num`. |
-| `detection_method` | string: `struct_conn`, `distance`, `struct_conn_and_distance` | How the pair was found in this model. `struct_conn` when a deposited `_struct_conn` disulf record within one molecule joins it, `distance` when two usable SG conformers that can coexist lie at most 3.0 Å apart, with no lower limit, and `struct_conn_and_distance` when both found it. A `struct_conn` row is not evidence of a cleaved bond (see [Finding pairs](scientific-methods.md#finding-pairs)). |
-| `metal_bridged` | boolean | `True` when a usable SG conformer of each residue lies within 2.8 Å of the same metal atom of the same model, where the two SG conformers can coexist with each other and each with the metal atom. `False` otherwise, and never missing. Only the atoms of the file are read, so a metal of a symmetry mate is not seen. The flag never adds, removes, or changes a row. Exclude flagged rows, or keep them apart, before reading any measure (see [Metal sites](scientific-methods.md#metal-sites)). |
-| `ss_distance_min_A` | float64 | Shortest SG–SG distance (Å) over every pair of usable SG conformers, one from each residue, that can coexist. Not rounded. An implausibly short distance is reported as measured (see [Search limit](scientific-methods.md#search-limit)). Missing when there is no such pair. |
-| `ss_distance_max_A` | float64 | Longest SG–SG distance (Å) over the same pairs. Equals the minimum when one pair was measured. |
-| `sg_conformer_occupancy_min` | float64 | Lowest occupancy of any single SG conformer of either residue, zero-occupancy rows included. Below 1 for any split SG. Missing when any SG occupancy of the two is missing. |
-| `sg_total_occupancy_min` | float64 | The lower of the two residues' SG occupancies, each summed over its conformers and rounded to 6 decimals. Not a measure of SG loss on its own (see [Reading the measures](scientific-methods.md#reading-the-measures)). Not clamped. Missing when any SG occupancy of the two is missing. |
-| `sg_occupancy_deficit_max` | float64 | The larger of the two residues' SG occupancy deficits, each the sum of its CB occupancies less the sum of its SG occupancies, rounded to 6 decimals. 0 when the SG is modelled as fully as the CB, above 0 when part of the SG is not modelled. The read-out of SG occupancy below 1. Not clamped. Missing when a residue has no CB row or any SG or CB occupancy of the two is missing. |
-| `sg_has_alternate_conformers` | boolean | `True` when the SG rows of either residue carry two or more distinct non-empty alternate location labels. Never missing. |
-| `sg_cb_b_factor_ratio_min` | float64 | The smaller of the two residues' ratios B(representative SG) / B(representative CB) (see [Representative conformers](scientific-methods.md#representative-conformers)). Missing when either ratio is, under the rules of [Measures and statuses](scientific-methods.md#measures-and-statuses). |
-| `sg_cb_b_factor_ratio_max` | float64 | The larger of the two ratios, missing under the same rule. |
-| `pair_status` | string: `ok`, `no_usable_sg`, `no_compatible_conformers`, `occupancy_missing`, `cb_missing`, `b_factor_unavailable`, `sg_not_in_atom_table` | `ok`, or the first gap in the row that applies, in the order listed (see [Measures and statuses](scientific-methods.md#measures-and-statuses)). |
-
-Read the table back with its declared types, which the engine's `TableSpec` also
-holds:
-
-```python
-import pandas as pd
-from pdbai.engines.analyses.disulfides.columns import DISULFIDES_TABLE
-
-disulfides = pd.read_csv(
-    "pdb_atom_site_dataset_disulfides.csv",
-    dtype={column.name: column.dtype for column in DISULFIDES_TABLE.columns},
-    keep_default_na=False,
-    na_values=[""],
-    float_precision="round_trip",
-)
-```
-
-`metal_bridged` reads back as a nullable boolean, so
-`disulfides[~disulfides["metal_bridged"]]` keeps the rows that are not at a
-metal site.
-
-An atom joins its rows where its `disulfide_site_id` equals `site_id` or
-`partner_site_id`. An SG with two partners is in two rows and links to both
-through its own identifier. A second partner is rarely a second bond, since such
-a cysteine is usually at a metal site or in contact with a neighbouring bond
-(see [Limitations](scientific-methods.md#limitations)). The standard site link
-joins on eight columns, one of them `_atom_site.label_alt_id`, which no curated
-profile keeps, so under a profile join through `disulfide_site_id`. A residue
-whose representative SG is not in the atom table has no linked atom
-(`pair_status` `sg_not_in_atom_table`).
-
-A cysteine with a CB but no SG in any conformer is in no row. The run report's
-`disulfide_cysteine_without_sg_count` counts such cysteines, which the table
-cannot see. It is not a count of damaged bonds (see
-[Limitations](scientific-methods.md#limitations)).
-
-### Metal sites
-
-Requires `--include-metal-sites` (off by default, every technique). The engine
-adds one atom column and writes three [engine tables](#engine-tables),
-`metal_sites` with one row per metal atom, `metal_ligand_bonds` with one row
-per bond between a metal atom and a donor atom, and `metal_metal_distances`
-with one row per pair of metal atoms that lie near each other. How donors are
-found and what
-the reference distances cover is described under [Metal
-coordination](scientific-methods.md#metal-coordination). The tables hold
-measurements and no judgment of a site.
-
-| Column | Description |
-|--------|-------------|
-| `metal_site_id` | Text. The atom's own `site_id` when it is a metal atom with a row in `metal_sites`, and missing on every other atom. |
-
-`metal_sites` is keyed by `site_id` and carries the standard site key columns.
-Its other columns:
-
-| Column | Description |
-|--------|-------------|
-| `metal_element` | Element symbol in upper case. Sodium is `NA`, so read the table with `keep_default_na=False`. |
-| `parent_type` | `ion`, `heme`, `cluster`, or `other`, the kind of component the metal belongs to. |
-| `component_atom_count` | Non-hydrogen atoms of the metal's component. |
-| `coordination_number` | Bond rows of the site. Atoms of the metal's own component are never donors, so for a heme or a cluster this counts bonds to the protein and to water only. |
-| `n_symmetry_bonds`, `n_declared_bonds` | Bonds to a symmetry mate, and bonds a deposited record names. |
-| `n_donor_N`, `n_donor_O`, `n_donor_S`, `n_donor_water` | Bonds by donor element, and bonds to water. |
-| `donor_distance_min_A`, `donor_distance_mean_A`, `donor_distance_max_A` | Summaries of the site's bond distances. |
-| `n_reference_bonds`, `distance_deviation_mean_A`, `distance_z_rms` | Bonds with a reference distance of their own, the mean of their deviations from it, and the root mean square of their z values. |
-| `occupancy`, `b_factor_A2`, `donor_b_factor_mean_A2`, `b_factor_ratio_to_donors` | The metal's occupancy and B-factor, and the B-factor relative to its donors'. |
-| `nearest_metal_distance_A`, `nearest_metal_element`, `nearest_metal_site_id`, `n_metals_within_6A` | Other metal atoms of the same model, among the atoms of the file. |
-| `on_special_position` | True when a symmetry image of the metal lies within 0.8 Å of it. |
-| `dpi_A` | The entry's diffraction-component precision index (Blow, 2002), repeated on every site. |
-| `metal_site_status` | `ok`, or `no_donors_found` when the site has no bond row. |
-
-`metal_ligand_bonds` is keyed by `site_id`, `donor_site_id`, and
-`donor_symmetry_operator`. The metal's site key columns have no prefix, so a
-bond joins its site on `site_id`, and the donor's carry `donor_`. Its other
-columns:
-
-| Column | Description |
-|--------|-------------|
-| `donor_symmetry_operator`, `is_symmetry_mate` | The operator and cell translation of the donor's image, as `1_555`, and whether it is another than `1_555`. |
-| `metal_element`, `donor_element` | Element symbols in upper case. |
-| `donor_class` | `water`, `amino_acid` (the 20 standard ones), `nucleotide`, or `other`. |
-| `donor_rule` | Which donor rule the atom falls under. Every rule but `outside_typical_donor_list` lets the distance search infer a bond. |
-| `detection_method` | `struct_conn`, `distance`, or `struct_conn_and_distance`, as in the disulfides table. |
-| `distance_A` | Metal–donor distance, not rounded. |
-| `reference_kind`, `reference_key` | `exact`, `element_fallback`, or `missing`, and the reference row used. |
-| `reference_distance_A`, `reference_sd_A` | The literature distance and its spread, for an exact reference only. |
-| `first_sphere_cutoff_A` | The largest distance at which the bond is inferred, the target distance plus 0.75 Å. |
-| `distance_deviation_A` | `distance_A` less `reference_distance_A`. |
-| `distance_z` | The deviation divided by the square root of `dpi_A`² plus `reference_sd_A`². |
-| `donor_occupancy`, `donor_b_factor_A2` | The donor atom's occupancy and B-factor. |
-| `bond_status` | `ok`, `no_reference` when the bond has no exact reference, or `no_dpi` when the entry has no precision index. |
-
-`metal_metal_distances` is keyed by `site_id` and `partner_site_id`. The first
-metal atom's site key columns have no prefix and the second's carry `partner_`,
-and both are rows of `metal_sites`. Each pair is a row once, with the atom the
-file lists first as the first. Its other columns:
-
-| Column | Description |
-|--------|-------------|
-| `metal_element`, `partner_element` | Element symbols in upper case. |
-| `distance_A` | Distance between the two metal atoms, among the atoms of the file, not rounded. Pairs up to 6 Å apart are rows. |
-| `same_component` | True when both atoms belong to one component, as the metals of one cluster do. |
-
-Read the tables as the [engine tables](#engine-tables) section describes. To
-set density beside a site, join the atom table to `metal_sites` on
-`metal_site_id`, and to the donors on the `donor_` key columns.
-
-### Residue sites
-
-Requires `--include-residue-sites` (off by default, every technique). The
-engine adds two atom columns and writes the `residue_sites` [engine
-table](#engine-tables), with one row per radiation-sensitive group of a polymer
-residue and per control group of the same shape. Which groups those are and how
-they are measured is described under [Residue
-sites](scientific-methods.md#residue-sites). The table holds measurements and no
-judgment of a site.
-
-| Column | Description |
-|--------|-------------|
-| `residue_site_id` | Text. The `site_id` of the atom's row in `residue_sites` when the atom is a site atom of one, and missing on every other atom. |
-| `b_factor_ratio_to_parent` | Numeric. The atom's B-factor divided by the mean B-factor of its parents, the atoms it is bonded to one bond nearer the CA, for every atom of the 20 standard amino acids but the CA. Missing on every other atom, and where the atom or its parent has no coordinates, an occupancy of zero, or a B-factor that is not positive. Compare one atom type across structures, not one atom with another. |
-
-`residue_sites` is keyed by `site_id` and carries the standard site key columns,
-which name the group's key atom, the atom the group is attached to. Its other
-columns:
-
-| Column | Description |
-|--------|-------------|
-| `site_class` | The kind of group. Sensitive: `asp_carboxylate` (CG, OD1, OD2 on CB), `glu_carboxylate` (CD, OE1, OE2 on CG), `c_terminal_carboxylate` (C, O, OXT on CA), `met_thioether` (SD between CG and CE), `tyr_hydroxyl` (OH on CZ), `cys_sulfur` (SG on CB, in a disulfide or not), `trp_indole` (CD1, CD2, NE1, CE2, CE3, CZ2, CZ3, CH2 on CG), `his_imidazole` (ND1, CD2, CE1, NE2 on CG), and the oxygens of a residue deposited oxidized: `cys_sulfenic_acid` (CSO: OD on SG), `cys_sulfinic_acid` (CSD: OD1, OD2), `cys_sulfonic_acid` (OCS: OD1, OD2, OD3), `met_sulfoxide` (SME: OE on S; MHO: OD1 on SD), `met_sulfone` (OMT: OD1, OD2 on SD), `trp_hydroxylated` (TRO, 4HT, HRP, 4PQ, TRX, 0AF, TOQ, RE0, RE3: the oxygen on the ring carbon that names the row), `trp_hydroperoxide` (TOX: O1, O2 on NE1), `trp_kynurenine` (KYN: O2 on C1), `his_oxo` (OHI: O12 on CE1; HOO: OAG on CE1 and OAM on CD2), `tyr_dopa` (DAH: OE2 on CE2), and `phe_hydroxylated` (MTY: OH on CE2). Controls: `asn_amide`, `gln_amide`, `phe_para_carbon` (CZ between CE1 and CE2), `phe_ring_carbons` (CD1, CD2, CE1, CE2 on CG, for His), `leu_delta_carbons`, `ile_delta_carbon`, `thr_hydroxyl` (OG1 on CB), and `ser_hydroxyl` (OG on CB). |
-| `is_control`, `control_for` | Whether the group is a control, and the sensitive class it stands beside. |
-| `n_site_atoms_expected`, `n_site_atoms_modelled`, `n_site_atoms_zero_occupancy` | Site atoms the class defines, those the model holds, and those deposited at zero occupancy. |
-| `site_occupancy_min`, `site_occupancy_mean` | Occupancy of the modelled site atoms. |
-| `site_b_factor_mean_A2`, `site_b_factor_max_A2`, `reference_b_factor_mean_A2`, `b_factor_ratio_to_reference` | B-factors of the site atoms and of the atoms they are attached to, and the ratio of the two means. |
-| `attachment_distance_min_A`, `attachment_distance_max_A` | The bonds that attach the group. For a carboxylate it is the one bond decarboxylation breaks. |
-| `has_alternate_conformer` | True when a modelled site atom carries an alternate-conformation identifier. |
-| `nearest_metal_distance_A`, `metal_bound` | Distance from the group to the nearest metal atom of the file, and whether it is at most 2.8 Å. |
-| `site_status` | `ok`, `site_atoms_missing`, `zero_occupancy`, or `b_factor_unavailable`, the first that applies. |
-
-To set density beside a site, join the atom table to `residue_sites` where
-`residue_site_id` equals `site_id`, which gives every modelled site atom of the
-row.
-
-The engine also ships a reference table of the rate constants of each amino
-acid with the hydroxyl radical and the hydrated electron, which is not written
-into the dataset but joins any table on `res_name` (see [Radiolysis rate
-constants](scientific-methods.md#radiolysis-rate-constants)).
-
-### Selenium and halogens
-
-Requires `--include-selenium-halogens` (off by default, every technique). The engine
-adds one atom column and writes the `selenium_halogen_sites` [engine
-table](#engine-tables), with one row per selenium or halogen atom, fluorine,
-chlorine, bromine, or iodine. How
-bonded atoms are found is described under [Selenium and
-halogens](scientific-methods.md#selenium-and-halogens). Mercury, platinum, gold, and the
-other heavy metals are rows of [`metal_sites`](#metal-sites). Most rows of a
-large run are chloride ions, since chloride is in most crystallization buffers,
-and `parent_type` sets them apart.
-
-| Column | Description |
-|--------|-------------|
-| `selenium_halogen_site_id` | Text. The atom's own `site_id` when it is a selenium or halogen atom with a row in `selenium_halogen_sites`, and missing on every other atom. |
-
-`selenium_halogen_sites` is keyed by `site_id`. The atom's site key columns have
-no prefix, and those of the nearest atom it is bonded to carry `bonded_` and are
-missing for an ion. Its other columns:
-
-| Column | Description |
-|--------|-------------|
-| `element` | `SE`, `F`, `CL`, `BR`, or `I`. Fluorine and chlorine are not heavy, and are read as the lighter halogens the others are compared with. |
-| `parent_type` | `ion` for a component of that one atom, `selenomethionine` for MSE, `polymer_residue` for any other component with a place in a polymer sequence, or `ligand`. |
-| `component_atom_count` | Non-hydrogen atoms of the heavy atom's component. |
-| `n_bonded_atoms`, `bonded_element` | Atoms bonded to the atom, and the element of the nearest. |
-| `bond_distance_min_A`, `bond_distance_max_A` | Distances to the nearest and the farthest bonded atom. |
-| `occupancy`, `b_factor_A2` | The atom's occupancy and B-factor. |
-| `bonded_b_factor_mean_A2`, `b_factor_ratio_to_bonded` | The mean B-factor of the bonded atoms, and the atom's B-factor relative to it. |
-| `component_occupancy_mean`, `component_b_factor_mean_A2`, `b_factor_ratio_to_component` | The same for the other atoms of the component, those that are not selenium or a halogen. |
-| `on_special_position` | True when a symmetry image of the atom lies within 0.8 Å of it. |
-| `site_status` | `ok`, `no_bonded_atom`, or `b_factor_unavailable`, the first that applies. |
-
-### Cofactors
-
-Requires `--include-cofactors` (off by default, every technique). Of the
-profiles, only `radiation_sensitivity` switches it on. The engine
-adds one atom column and writes the `cofactor_sites` [engine
-table](#engine-tables), with one row per recognized cofactor. How a cofactor is
-recognized and what each measure means is described under
-[Cofactors](scientific-methods.md#cofactors).
-
-| Column | Description |
-|--------|-------------|
-| `cofactor_site_id` | Text. The `site_id` of the atom's row in `cofactor_sites` when the atom belongs to the reactive group of a cofactor there, and missing on every other atom. |
-
-`cofactor_sites` is keyed by `site_id` and carries the standard site key
-columns, which name the key atom of the cofactor's class. A geometry column
-belongs to one class and is missing on the rows of every other. Its other
-columns:
-
-| Column | Description |
-|--------|-------------|
-| `cofactor_class` | `flavin` (named by N5), `tetrapyrrole` (NA), `fp_chromophore` (CB2), `retinal` (C15), or `coumaric_acid` (C3). |
-| `component_atom_count` | Non-hydrogen atoms of the component. |
-| `n_group_atoms_expected`, `n_group_atoms_modelled` | Atoms of the reactive group the class defines, and those the model holds. |
-| `group_occupancy_min`, `group_occupancy_mean` | Occupancy of the modelled group atoms. |
-| `group_b_factor_mean_A2`, `rest_b_factor_mean_A2`, `b_factor_ratio_to_rest` | B-factors of the group and of the rest of the component, and the ratio of the two means. |
-| `group_planarity_rmsd_A` | Root-mean-square distance of the group atoms from their least-squares plane. |
-| `flavin_butterfly_angle_deg` | Flavin: the angle between the two outer rings of the isoalloxazine ring, 0 when flat. |
-| `chromophore_tau_deg`, `chromophore_phi_deg` | Fluorescent-protein chromophore: the torsions N2–CA2–CB2–CG2 and CA2–CB2–CG2–CD1 of the bridge. |
-| `retinal_c11_c12_torsion_deg`, `retinal_c13_c14_torsion_deg` | Retinal: the torsions about the C11=C12 and C13=C14 bonds. |
-| `coumaric_c2_c3_torsion_deg` | p-Coumaric acid: the torsion about the C2=C3 bond. |
-| `protein_link_distance_A` | Retinal and p-coumaric acid: the distance from C15 to the nearest lysine NZ, or from C1 to the nearest cysteine SG, within 4 Å. |
-| `central_metal_element`, `central_metal_site_id` | Tetrapyrrole: the central metal and its `site_id`, which is its key in `metal_sites`. |
-| `metal_out_of_plane_A`, `metal_nitrogen_distance_mean_A` | Tetrapyrrole: the metal's distance from the plane of the four pyrrole nitrogens, and its mean distance to them. |
-| `cofactor_status` | `ok`, `group_atoms_missing`, or `b_factor_unavailable`, the first that applies. |
-
-Torsions run from −180 to 180 degrees, where 0 is cis and 180 is trans.
-
-### Site environment
-
-Requires `--include-site-environment` (off by default, every technique). Of
-the profiles, only `radiation_sensitivity` switches it on. The engine adds one
-atom column and writes the `site_environment` [engine table](#engine-tables),
-with one row per group of the `residue_sites` table and the same `site_id`, so
-the two tables join one to one whether or not the residue-site engine ran. How
-each measure is taken is described under [Site
-environment](scientific-methods.md#site-environment).
-
-| Column | Description |
-|--------|-------------|
-| `atom_depth_A` | Numeric. For every protein atom, the distance in Å to the nearest protein atom of its model with a solvent-accessible area of at least 1 Å², zero for an atom at the surface. Missing on every other atom. |
-
-`site_environment` is keyed by `site_id` and carries the standard site key
-columns of its `residue_sites` row. A distance to something the model does not
-hold is missing, not large. Its other columns:
-
-| Column | Description |
-|--------|-------------|
-| `site_class` | The class of the `residue_sites` row. |
-| `n_group_atoms` | Site atoms with coordinates and an occupancy that is not zero, which every measure is taken over. |
-| `hbond_protein_count`, `hbond_water_count` | Nitrogen and oxygen atoms of other amino acids, and water oxygens, within 3.5 Å of a nitrogen or oxygen of the group or 4.0 Å of its sulfur, by distance alone. Missing for a group without N, O, or S, and the water count for a model without water. |
-| `salt_bridge_partner_count` | Lys, Arg, and His residues with a charged-group nitrogen within 4.0 Å of a carboxylate oxygen. Carboxylates only. |
-| `nearest_cation_distance_A` | To the nearest charged-group nitrogen of a Lys, Arg, or His of another residue. |
-| `in_disulfide`, `nearest_disulfide_sulfur_distance_A` | For a cysteine, whether its SG is within 3.0 Å of another SG, and, for any group, the distance to the nearest SG of a disulfide other than its own. |
-| `nearest_metal_distance_A`, `nearest_ligand_distance_A` | To the nearest metal atom, and to the nearest heavy atom outside the amino acids, waters, and metals. |
-| `nearest_aromatic_ring_distance_A`, `nearest_aromatic_res_name` | To the nearest ring centroid of a Phe, Tyr, Trp, or His of another residue, and that residue's name. |
-| `heavy_atom_count_6A`, `heavy_atom_count_10A` | Protein heavy atoms within 6 and 10 Å of the group's centroid, its own atoms left out. |
-| `site_sasa_A2`, `site_relative_sasa`, `site_depth_A` | The group's solvent-accessible area among the protein atoms of its model, that area over the area with its residue alone, and the mean depth of its atoms. |
-| `water_count_6A` | Water oxygens within 6 Å of a group atom. Missing for a model without water. |
-| `nearest_symmetry_mate_distance_A`, `symmetry_mate_atom_count_6A` | To the nearest heavy atom of a symmetry mate, searched to 15 Å, and the mate atoms within 6 Å. |
-| `crystal_contacts_status` | `ok`, `none_in_range`, or `no_unit_cell`. |
-| `environment_status` | `ok`, or `no_group_atoms` when every measure is missing. |
 
 ### wwPDB validation
 

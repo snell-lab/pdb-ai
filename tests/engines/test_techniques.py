@@ -207,7 +207,6 @@ def test_builtin_engines_declare_the_expected_technique_support() -> None:
         {"x_ray_diffraction"}
     )
     assert registry.get("sasa").spec.techniques is None
-    assert registry.get("disulfides").spec.techniques is None
     assert registry.get("rcsb_source").spec.techniques is None
     assert registry.get("alphafold_database").spec.techniques is None
     validation = registry.get("validation").spec.techniques
@@ -227,7 +226,6 @@ def test_toggle_compatibility_covers_every_boolean_option() -> None:
     assert by_toggle["include_pdb_redo"].label == "PDB-Redo comparison"
     assert by_toggle["include_validation"].label == "wwPDB validation"
     assert by_toggle["include_sasa"].techniques is None
-    assert by_toggle["include_disulfides"].techniques is None
     assert by_toggle["include_uniprot"].techniques is None
     assert by_toggle["include_rabdam"].to_dict() == {
         "toggle": "include_rabdam",

@@ -195,12 +195,6 @@ def test_column_groups_follow_engine_registration_order() -> None:
         "RABDAM Fields",
         "SASA Fields",
         "Density Fields",
-        "Disulfide Fields",
-        "Metal Site Fields",
-        "Residue Site Fields",
-        "Selenium and Halogen Fields",
-        "Cofactor Fields",
-        "Site Environment Fields",
         "AlphaFold Database Fields",
     ]
 

@@ -55,12 +55,6 @@ reference. The Python API takes the same settings by name in
 | `--sasa-exclude-unknown-nonpolymers` | off | `sasa_include_unknown_nonpolymers` (default `True`) | Leave unclassified non-polymers out of the bound context. |
 | `--include-density` | off | `include_density` | Density of an entry's 2mFo−DFc and mFo−DFc maps at every atom, in units of each map's root-mean-square density, and, from PDB-Redo's maps, the model's calculated density and the difference density on one scale (X-ray diffraction only). |
 | `--density-source {pdb_redo,wwpdb,both}` | `pdb_redo` | `density_map_source` | Which maps the density columns are read from. `pdb_redo` fetches PDB-Redo's model and reflection file and reads its maps at the deposited position and at PDB-Redo's. `wwpdb` fetches the wwPDB validation map coefficients, calculated about the deposited model, and reads them at the deposited position. `both` does both (see [Electron density at atoms](scientific-methods.md#electron-density-at-atoms)). |
-| `--include-disulfides` | off | `include_disulfides` | Candidate disulfides, cysteine pairs found from deposited records and SG–SG distances, with S–S distances, SG occupancy, alternate conformers, SG/CB B-factor ratios, and a metal-site flag, in their own table. |
-| `--include-metal-sites` | off | `include_metal_sites` | Metal atoms and their donor atoms, found from deposited records and first-sphere distances, symmetry mates included, with bond distances, coordination counts, and each bond's deviation from a literature distance, and the distances between metal atoms that lie near each other, in three tables of their own. |
-| `--include-residue-sites` | off | `include_residue_sites` | The radiation-sensitive groups of amino acids, the carboxylates of Asp, Glu, and the C-terminus, the sulfurs of Met and Cys, the hydroxyl of Tyr, and the rings of Trp and His, beside control groups of the same shape, and the oxygens of residues deposited oxidized, with modelled atoms, occupancy, and B-factor ratios, in their own table, and every atom's B-factor against the atom it hangs from. |
-| `--include-selenium-halogens` | off | `include_selenium_halogens` | Selenium and halogen atoms, fluorine to iodine, in selenomethionine, halogenated ligands and nucleotides, and halide ions, with bond distances, occupancy, and B-factors against the atoms around them, in their own table. |
-| `--include-cofactors` | off | `include_cofactors` | Flavins, hemes and chlorophylls, fluorescent-protein chromophores, retinal, and p-coumaric acid, with the geometry, occupancy, and B-factors of each one's reactive group, in their own table. |
-| `--include-site-environment` | off | `include_site_environment` | The surroundings of each radiation-sensitive group and control of the residue-site engine: hydrogen bonds, salt bridges, the nearest disulfide, metal, aromatic ring, and ligand, packing, solvent exposure, depth, and crystal contacts, in their own table, and every protein atom's depth. |
 | `--include-alphafold` | off | `include_alphafold` | AlphaFold Database status, provenance, and per-residue pLDDT. Keeps `uniprot_id`. |
 | `--include-uniprot` | off | `include_uniprot` | Per-residue UniProt accession (`uniprot_id`). |
 | `--include-validation` | off | `include_validation` | wwPDB validation metrics (RSCC, RSR, Ramachandran, rotamer, clashscore). |
@@ -113,7 +107,7 @@ a technique it does not support is rejected before the run starts:
 |-----------------|------------|
 | RABDAM, PDB-Redo comparison, Density | X-ray diffraction only |
 | wwPDB validation | X-ray, electron microscopy, neutron, electron crystallography, solution and solid-state NMR |
-| SASA, Disulfides, Metal sites, AlphaFold Database, UniProt | every technique |
+| SASA, AlphaFold Database, UniProt | every technique |
 
 A column profile that lists an engine the technique rules out leaves that engine
 off and says so, rather than failing, and leaves that engine's columns out of
@@ -348,12 +342,6 @@ result = build_atom_site_dataset(
             "sasa_include_unknown_nonpolymers": True,
             "include_density": False,  # default
             "density_map_source": "pdb_redo",  # default, or "wwpdb" / "both"
-            "include_disulfides": False,  # default
-            "include_metal_sites": False,  # default
-            "include_residue_sites": False,  # default
-            "include_selenium_halogens": False,  # default
-            "include_cofactors": False,  # default
-            "include_site_environment": False,  # default
             "include_alphafold": False,  # default
             "include_uniprot": False,  # default
             "include_validation": False,  # default

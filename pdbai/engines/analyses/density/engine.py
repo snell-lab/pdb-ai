@@ -45,7 +45,7 @@ from ...sources.validation.maps import (
     VALIDATION_2FOFC_MAP_PATH,
     VALIDATION_FOFC_MAP_PATH,
 )
-from ..site_geometry import read_cell_parameters
+from .cell import read_cell_parameters
 from .columns import DENSITY_COLUMNS
 from .compute import compute_structure_density, compute_validation_density
 from .constants import (
