@@ -7,7 +7,9 @@ and keys across files use only author fields, which PDB-Redo keeps.
 
 coordinate_preprocessing.py keeps one alternate conformer of each residue.
 The choice is made for the whole residue by mean occupancy, so every
-calculation sees one set of coordinates that coexisted.
+calculation sees one set of coordinates that coexisted. It also sums each
+atom's occupancy over all its conformers and counts them, which the parser
+keeps on the rows it keeps.
 
 mmcif_fields.py turns the flat mmCIF dictionary the parser reads into columns
 of one value per atom. Only what describes the whole entry is repeated on

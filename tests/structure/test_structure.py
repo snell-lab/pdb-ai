@@ -70,6 +70,23 @@ def test_mmcif_parser_builds_atom_rows_and_selects_one_conformer(
     assert bool(dataframe.loc[dataframe["atom_name"] == "ZN", "is_hetatm"].iloc[0])
 
 
+def test_kept_rows_carry_their_atoms_occupancy_summed_over_conformers(
+    minimal_cif: Path,
+) -> None:
+    # The CA is modelled as A at 0.40 and B at 0.80. B is kept, and its row
+    # still records both conformers. Atoms without alternates are their own
+    # total.
+    dataframe = _parse(minimal_cif, {}).dataframe
+    ca = dataframe.loc[dataframe["atom_name"] == "CA"].iloc[0]
+    others = dataframe.loc[dataframe["atom_name"] != "CA"]
+
+    assert ca["occupancy"] == 0.8
+    assert ca["occupancy_all_conformers"] == pytest.approx(1.2)
+    assert ca["conformer_count"] == 2
+    assert others["occupancy_all_conformers"].tolist() == others["occupancy"].tolist()
+    assert others["conformer_count"].tolist() == [1] * len(others)
+
+
 def test_parser_uses_rcsb_resolution_when_cif_has_no_resolution(
     minimal_cif: Path,
 ) -> None:

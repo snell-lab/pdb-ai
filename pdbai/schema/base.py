@@ -190,6 +190,31 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         description="Refined atom-site occupancy from _atom_site.occupancy.",
     ),
     _parser_column(
+        "occupancy_all_conformers",
+        granularity=ColumnGranularity.ATOM,
+        dtype="numeric",
+        profiles=CURATED_PROFILE_IDS,
+        description=(
+            "The atom's occupancy summed over every alternate conformer the file "
+            "models it in, including conformers the parser drops; equal to "
+            "occupancy for an atom without alternates. Below one, the atom's "
+            "occupancy was refined below full rather than shared between "
+            "conformers. Missing when the atom has no alternates and no readable "
+            "occupancy."
+        ),
+    ),
+    _parser_column(
+        "conformer_count",
+        granularity=ColumnGranularity.ATOM,
+        dtype="numeric",
+        profiles=CURATED_PROFILE_IDS,
+        description=(
+            "Number of alternate conformers (distinct _atom_site.label_alt_id "
+            "values) the file models the atom in, including those the parser "
+            "drops; 1 for an atom without alternates."
+        ),
+    ),
+    _parser_column(
         "model_num",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",

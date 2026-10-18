@@ -15,9 +15,18 @@ atom must have a finite occupancy. Reading a missing one as zero or one would
 decide the choice by a guess. An occupancy is read by the grammar of
 cif_numbers.py, as the parser reads it, so one refined with a standard
 uncertainty, such as 0.50(2), counts as 0.50 here too.
+
+The choice also records what the dropped conformers held, which the kept rows
+would otherwise lose. For each atom modelled in alternate conformers, it sums
+the atom's occupancy over all of them and counts them. An atom is one atom
+name within one residue. A total below one then marks an occupancy refined
+below one, such as an atom modelled as partly lost, rather than one shared
+between conformers.
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
@@ -28,13 +37,33 @@ from .cif_numbers import coerce_cif_numbers
 from .residue_identity import build_residue_identities, clean_string_series
 
 _ALT_ID_COLUMN = "_atom_site.label_alt_id"
+_ATOM_NAME_COLUMN = "_atom_site.label_atom_id"
 _OCCUPANCY_COLUMN = "_atom_site.occupancy"
 
 # The decimal places a mean occupancy is rounded to before conformers are
 # compared. Occupancies are recorded to a few decimals. Two means that differ
 # only beyond this are the same mean summed in a different order. They must
-# tie, so that table order decides and rounding error does not.
+# tie, so that table order decides and rounding error does not. Summed
+# occupancies are rounded the same way, so 0.56 and 0.44 sum to exactly one.
 _MEAN_OCCUPANCY_DECIMALS = 9
+
+
+@dataclass(frozen=True)
+class ConformerChoice:
+    """The rows to keep, and each row's atom summed over all its conformers.
+
+    Every array is positional, with one entry per row in row order. keep is
+    True for the rows of the conformer kept. occupancy_total is the occupancy
+    of the row's atom summed over every alternate conformer the file models
+    it in, and NaN for a row without an alternate identifier, whose own
+    occupancy is its total. conformer_count is the number of alternate
+    identifiers the row's atom is modelled under, and 1 for a row without
+    one.
+    """
+
+    keep: npt.NDArray[np.bool_]
+    occupancy_total: npt.NDArray[np.float64]
+    conformer_count: npt.NDArray[np.int64]
 
 
 def _alternate_occupancies(
@@ -64,25 +93,28 @@ def _alternate_occupancies(
     return occupancy
 
 
-def highest_occupancy_conformer_mask(
-    dataframe: pd.DataFrame,
-) -> npt.NDArray[np.bool_]:
-    """Return a mask of the rows to keep so each residue has one conformer.
+def choose_conformers(dataframe: pd.DataFrame) -> ConformerChoice:
+    """Return the conformer kept for each residue, with each atom's totals.
 
-    The mask is positional, with one entry per row in row order. A row
-    without an alternate identifier is shared by every conformer, so it is
-    always True, whatever its occupancy. An identifier may be letters,
+    A row without an alternate identifier is shared by every conformer, so it
+    is always kept, whatever its occupancy. An identifier may be letters,
     digits, or several characters. In each residue, the rows of the
-    identifier with the highest mean occupancy are True. Means are compared
+    identifier with the highest mean occupancy are kept. Means are compared
     to nine decimal places, and the identifier that appears first wins a tie.
-    Raises ValueError naming the occupancy column when a row with an
-    alternate identifier has no finite occupancy.
+
+    The totals group the alternate rows of one residue by atom name. An
+    alternate row without an atom name counts as an atom of its own, so
+    unnamed atoms are never summed together. Raises ValueError naming the
+    occupancy column when a row with an alternate identifier has no finite
+    occupancy.
     """
     alt_ids = clean_string_series(dataframe, _ALT_ID_COLUMN).to_numpy()
     alt_positions = np.flatnonzero(alt_ids != "")
     selected = np.ones(len(dataframe), dtype=np.bool_)
+    occupancy_total = np.full(len(dataframe), np.nan, dtype=np.float64)
+    conformer_count = np.ones(len(dataframe), dtype=np.int64)
     if alt_positions.size == 0:
-        return selected
+        return ConformerChoice(selected, occupancy_total, conformer_count)
 
     occupancy = _alternate_occupancies(dataframe, alt_positions)
     residue_keys = build_residue_identities(dataframe).residue_keys.iloc[alt_positions]
@@ -118,7 +150,36 @@ def highest_occupancy_conformer_mask(
     ).drop_duplicates("residue")
     kept_alt_id = alternates["residue"].map(kept.set_index("residue")["alt_id"])
     selected[alt_positions] = (kept_alt_id == alternates["alt_id"]).to_numpy()
-    return selected
+
+    atom_names = clean_string_series(dataframe, _ATOM_NAME_COLUMN).to_numpy()[
+        alt_positions
+    ]
+    atom_codes = (
+        alternates.assign(atom=atom_names)
+        .groupby(["residue", "atom"], sort=False)
+        .ngroup()
+        .to_numpy()
+    )
+    # As with residues, an unnamed atom takes a negative code of its own.
+    atom_codes = np.where(atom_names != "", atom_codes, -1 - alt_positions)
+    by_atom = alternates.groupby(atom_codes, sort=False)
+    occupancy_total[alt_positions] = (
+        by_atom["occupancy"].transform("sum").round(_MEAN_OCCUPANCY_DECIMALS).to_numpy()
+    )
+    conformer_count[alt_positions] = by_atom["alt_id"].transform("nunique").to_numpy()
+    return ConformerChoice(selected, occupancy_total, conformer_count)
 
 
-__all__ = ["highest_occupancy_conformer_mask"]
+def highest_occupancy_conformer_mask(
+    dataframe: pd.DataFrame,
+) -> npt.NDArray[np.bool_]:
+    """Return a mask of the rows to keep so each residue has one conformer.
+
+    The mask is choose_conformers(dataframe).keep, positional, with one entry
+    per row in row order. Raises ValueError naming the occupancy column when
+    a row with an alternate identifier has no finite occupancy.
+    """
+    return choose_conformers(dataframe).keep
+
+
+__all__ = ["ConformerChoice", "choose_conformers", "highest_occupancy_conformer_mask"]

@@ -20,6 +20,10 @@ row without an author residue name takes its label one.
 atom_site_residue_identity of residue_identity.py is that rule, and the
 parse result warns when it chose label numbering. atom_name comes from the
 label atom name. is_hetatm, is_backbone, and is_sidechain classify each atom.
+occupancy_all_conformers sums an atom's occupancy over the alternate
+conformers the file models it in, the dropped ones included, and
+conformer_count counts them, so a kept row still tells an occupancy shared
+between conformers from one refined below one.
 residue_mean_bfactor averages the B-factors of each model-aware residue. The
 anisotropic displacement tensor is joined to its atom, with its isotropic
 equivalent and its anisotropy.
@@ -66,7 +70,7 @@ from ..engines.core.techniques import classify_methods, normalize_source
 from ..json_values import str_list
 from ..refused_values import listed_values
 from .cif_numbers import CIF_NUMBER, coerce_cif_numbers
-from .coordinate_preprocessing import highest_occupancy_conformer_mask
+from .coordinate_preprocessing import choose_conformers
 from .mmcif_fields import calculate_unit_cell_volume, expand_mmcif_atom_fields
 from .refinement import read_refinement_fields
 from .residue_identity import (
@@ -679,7 +683,10 @@ def _atom_rows(
     # The numbering is the file's, so it is decided on every row too. An
     # engine that reads the file again then decides as the parser did.
     numbering = atom_site_residue_numbering(dataframe)
-    selected = highest_occupancy_conformer_mask(dataframe)
+    conformers = choose_conformers(dataframe)
+    selected = conformers.keep
+    occupancy_total = conformers.occupancy_total[selected]
+    conformer_count = conformers.conformer_count[selected]
     if not selected.all():
         dataframe = dataframe.loc[selected].reset_index(drop=True)
         is_hetatm = is_hetatm.loc[selected].reset_index(drop=True)
@@ -718,6 +725,14 @@ def _atom_rows(
     dataframe["is_backbone"] = is_backbone_name & ~is_hetatm
     dataframe["is_sidechain"] = ~is_backbone_name & ~is_hetatm
     dataframe["occupancy"] = _optional_numbers(dataframe, "_atom_site.occupancy")
+    # The conformer choice summed each alternate atom over its conformers. An
+    # atom without alternates is its own total.
+    dataframe["occupancy_all_conformers"] = pd.Series(
+        occupancy_total, index=dataframe.index
+    ).fillna(dataframe["occupancy"])
+    dataframe["conformer_count"] = pd.Series(
+        conformer_count, index=dataframe.index, dtype="Int64"
+    )
     dataframe["model_num"] = _model_numbers(dataframe)
     for column, item in (
         ("x", "_atom_site.Cartn_x"),

@@ -3,7 +3,10 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from pdbai.structure.coordinate_preprocessing import highest_occupancy_conformer_mask
+from pdbai.structure.coordinate_preprocessing import (
+    choose_conformers,
+    highest_occupancy_conformer_mask,
+)
 
 
 def _atoms(
@@ -13,11 +16,13 @@ def _atoms(
     residues: list[str] | None = None,
     models: list[str] | None = None,
     chains: list[str] | None = None,
+    names: list[str] | None = None,
 ) -> pd.DataFrame:
     count = len(alt_ids)
     return pd.DataFrame(
         {
             "_atom_site.group_PDB": ["ATOM"] * count,
+            "_atom_site.label_atom_id": names or ["OG"] * count,
             "_atom_site.label_alt_id": alt_ids,
             "_atom_site.occupancy": occupancies,
             "_atom_site.auth_asym_id": chains or ["A"] * count,
@@ -203,3 +208,75 @@ def test_the_occupancy_of_an_atom_without_an_identifier_is_not_checked() -> None
     dataframe = _atoms(["", "A", "B"], [None, "0.4", "0.6"])
 
     assert _kept(dataframe) == [True, False, True]
+
+
+def _totals(dataframe: pd.DataFrame) -> tuple[list[float], list[int]]:
+    choice = choose_conformers(dataframe)
+    return (
+        [round(float(value), 9) for value in choice.occupancy_total],
+        [int(value) for value in choice.conformer_count],
+    )
+
+
+def test_an_atom_shared_between_conformers_sums_to_one() -> None:
+    dataframe = _atoms(["A", "B"], ["0.56", "0.44"])
+
+    totals, counts = _totals(dataframe)
+
+    assert totals == [1.0, 1.0]
+    assert counts == [2, 2]
+
+
+def test_an_atom_refined_below_one_in_a_single_conformer_keeps_its_total() -> None:
+    # One conformer only, refined at 0.6: the occupancy is not shared, so the
+    # total stays below one even though the row carries an identifier.
+    dataframe = _atoms(["A"], ["0.6"])
+
+    totals, counts = _totals(dataframe)
+
+    assert totals == [0.6]
+    assert counts == [1]
+
+
+def test_totals_are_summed_per_atom_name_not_per_residue() -> None:
+    dataframe = _atoms(
+        ["A", "B", "A"],
+        ["0.5", "0.5", "0.3"],
+        names=["OD1", "OD1", "OD2"],
+    )
+
+    totals, counts = _totals(dataframe)
+
+    assert totals == [1.0, 1.0, 0.3]
+    assert counts == [2, 2, 1]
+
+
+def test_totals_do_not_combine_residues_or_models() -> None:
+    dataframe = _atoms(
+        ["A", "B", "A", "B"],
+        ["0.5", "0.2", "0.5", "0.2"],
+        residues=["10", "10", "11", "10"],
+        models=["1", "1", "1", "2"],
+    )
+
+    totals, counts = _totals(dataframe)
+
+    assert totals == [0.7, 0.7, 0.5, 0.2]
+    assert counts == [2, 2, 1, 1]
+
+
+def test_unnamed_alternate_atoms_are_never_summed_together() -> None:
+    dataframe = _atoms(["A", "B"], ["0.5", "0.5"], names=["", ""])
+
+    totals, counts = _totals(dataframe)
+
+    assert totals == [0.5, 0.5]
+    assert counts == [1, 1]
+
+
+def test_rows_without_an_identifier_have_no_total_and_one_conformer() -> None:
+    choice = choose_conformers(_atoms([".", "A", "B"], ["1.0", "0.4", "0.6"]))
+
+    assert pd.isna(choice.occupancy_total[0])
+    assert [int(value) for value in choice.conformer_count] == [1, 2, 2]
+    assert [bool(value) for value in choice.keep] == [True, False, True]
