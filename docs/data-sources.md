@@ -20,8 +20,8 @@ interpretation risks.
 | AlphaFold Database Prediction API | `https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}` | Discovers the canonical prediction family, fragments, model IDs, sequence bounds, and CIF URLs for an accession. | successful result in `mmcif/afdb/models/{uniprot_id}.json` | `--include-alphafold` |
 | AlphaFold Database ModelCIF | URL returned by the prediction API | Validated per-residue pLDDT and exact model and fragment provenance. | same model JSON cache | `--include-alphafold` |
 
-`{mid}` is the 2nd and 3rd characters of the lower-case PDB ID. A `--profile`
-that turns on an engine triggers the same fetches as the engine's flag.
+`{mid}` is the 2nd and 3rd characters of the lower-case PDB ID. The `minimal`
+profile turns on engines, and that triggers the same fetches as their flags.
 
 ### Cache behavior
 

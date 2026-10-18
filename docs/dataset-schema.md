@@ -155,29 +155,27 @@ that was written, where the default parser can change the last digit.
 
 ## Column profiles
 
-Profiles are named column presets that filter the output to a curated subset.
-Apply one with `--profile <id>` on the CLI or via the web UI dropdown. Selecting
-a profile whose columns depend on an engine you haven't enabled turns that
-engine on automatically (see `toggles` in the `/api/profiles` response). The
-exception is an engine the run's technique rules out, which stays off and is
-reported rather than failing the run (see [Technique
-selection](cli.md#technique-selection)).
+Profiles are named column presets. Apply one with `--profile <id>` on the CLI or
+from the web UI dropdown. There are three:
 
-| ID | Name | Purpose | Requires engines |
-|----|------|---------|-------------------|
-| `all` | All Columns | No filtering. The base tables keep every column the run writes, namely each `_atom_site` item, each item of a one-row mmCIF category repeated on every atom, the parser's derived and metadata columns, and the columns of every engine the run enables. It switches no engine on. | none |
-| `research_ready` | Research-Ready | The default for analysis. Keeps atom identity, B factors and anisotropic displacement parameters, experimental metadata, RABDAM's BDamage, packing density, and Bnet scores, solvent accessibility, the UniProt mapping, AlphaFold pLDDT, and wwPDB validation metrics. Of the raw mmCIF fields, only the identity items and the B factor remain. | RABDAM, SASA, AlphaFold, UniProt, validation |
-| `radiation_sensitivity` | Radiation Sensitivity | Features for models of radiation-damage susceptibility. Keeps atom identity, B factors and anisotropic displacement parameters, RABDAM's BDamage, packing density, and Bnet scores, solvent accessibility, electron density at atoms, data-quality and wwPDB validation metrics, radiation dose and collection conditions, and the UniProt mapping. | RABDAM, SASA, density, UniProt, validation |
-| `ml_minimal` | ML Minimal | The smallest complete feature set for training and inference. Keeps atom identity, B factors and their anisotropy summaries, resolution and R factors, the technique and radiation source, RABDAM's damage scores, relative solvent accessibility, and the real-space fit and Ramachandran class from wwPDB validation. Of the raw mmCIF fields, only the identity items and the B factor remain. | RABDAM, SASA, validation |
-| `structure_quality` | Structure Quality | Experimental metadata and quality indicators for choosing structures before training. Keeps atom identity and B factors, resolution, R factors, data-collection statistics, radiation dose, crystallization conditions, the wwPDB clashscore and geometry outliers, RABDAM's structure-level Bnet and coverage, and the UniProt mapping. | RABDAM, UniProt, validation |
+| ID | Name | Purpose | Switches on |
+|----|------|---------|-------------|
+| `all` | All Columns | No filtering. The base tables keep every column the run writes, namely each _atom_site item, each item of a one-row mmCIF category repeated on every atom, the parser's derived and metadata columns, and the columns of every engine the run enables. It switches no engine on. | nothing |
+| `standard` | Standard | Every column PDB-AI defines, for the engines the run enables: atom and residue identity, coordinates, occupancy and B factors, experimental, refinement, and citation metadata, and every value the enabled engines compute. It leaves out the raw mmCIF items PDB-AI passes through without defining. It switches no engine on. | nothing |
+| `minimal` | Minimal | The smallest complete feature set for training and inference. Keeps atom identity, B factors and their anisotropy summaries, resolution and R factors, the technique and radiation source, RABDAM's damage scores, relative solvent accessibility, and the real-space fit and Ramachandran class from wwPDB validation. It switches on RABDAM, SASA, and wwPDB validation. | RABDAM, SASA, validation |
+
+`standard` is a filter only. It follows the engines you enable: under a run with
+only the density engine on, it keeps the base columns and the density columns,
+and it leaves out the columns of a map source the run does not read. `minimal`
+switches on the engines its columns need (see `toggles` in the `/api/profiles`
+response). An engine the run's technique rules out stays off and is reported
+rather than failing the run (see [Technique selection](cli.md#technique-selection)),
+and the profile's filter leaves that engine's columns out, so they are not
+reported missing. A column filter you name yourself is applied as given.
 
 Profiles name RABDAM columns by wildcard patterns, such as `bnet*` and
 `rabdam_alignment*`, so each profile resolves to whichever [column
-set](scientific-methods.md#rabdam-column-names) the run produced. Under a
-technique that rules out one of a profile's engines, the profile leaves that
-engine off and reports it, and its column filter leaves that engine's columns
-out, so they are not reported missing. A column filter you name yourself is
-applied as given.
+set](scientific-methods.md#rabdam-column-names) the run produced.
 
 Custom filtering is available with `--column-filter-mode` and
 `--column-filter-list`, or through the web column-filter tool. A `*` in a name
@@ -234,7 +232,7 @@ values as object dtype. Pass `dtype={"is_hetatm": "boolean"}` (or
 | `chain_id` | `_atom_site.auth_asym_id`, or `_atom_site.label_asym_id` | Author chain identifier. The label chain identifier for a structure whose `residue_numbering` is `label`. |
 | `res_num` | `_atom_site.auth_seq_id`, or `_atom_site.label_seq_id` | Author residue sequence number (string). The label sequence number for a structure whose `residue_numbering` is `label`, where it is empty for a residue outside a polymer. The insertion code is the separate `_atom_site.pdbx_PDB_ins_code` column. |
 | `res_name` | `_atom_site.auth_comp_id`, or `_atom_site.label_comp_id` | Three-letter residue name. The author name, or the label name on an atom whose author name is missing. |
-| `residue_numbering` | derived | Which identifiers `chain_id` and `res_num` hold for the structure, `author` or `label`. A structure-level column, in every curated profile. The paragraph below the table gives the rule. |
+| `residue_numbering` | derived | Which identifiers `chain_id` and `res_num` hold for the structure, `author` or `label`. A structure-level column, in every profile. The paragraph below the table gives the rule. |
 | `atom_name` | `_atom_site.label_atom_id` | PDB standard atom name (CA, SG, OD1, …). |
 | `x` / `y` / `z` | `_atom_site.Cartn_x/y/z` | Cartesian coordinates (Å). |
 | `element` | `_atom_site.type_symbol` | Chemical element symbol. |
@@ -242,7 +240,7 @@ values as object dtype. Pass `dtype={"is_hetatm": "boolean"}` (or
 | `occupancy` | `_atom_site.occupancy` | Crystallographic occupancy. One mean-highest-occupancy alternate ID is retained coherently per residue, together with shared blank-ID atoms. Ties go to the identifier that appears first, and an alternate atom without a finite occupancy (missing, non-numeric, or infinite) fails the parse. An occupancy written with a standard uncertainty, such as `0.50(2)`, is read without it. |
 | `occupancy_all_conformers` | `_atom_site.occupancy` | The atom's occupancy summed over every alternate conformer the file models it in, the dropped ones included; equal to `occupancy` for an atom without alternates. A value below one marks an occupancy refined below full rather than one shared between conformers. |
 | `conformer_count` | `_atom_site.label_alt_id` | Number of alternate conformers the file models the atom in, the dropped ones included; 1 for an atom without alternates. |
-| `model_num` | `_atom_site.pdbx_PDB_model_num` | NMR model index (1 for X-ray structures). The star schema builds its keys from this column, and the raw `_atom_site.pdbx_PDB_model_num` it repeats stays an ordinary atom column and is in no curated profile. |
+| `model_num` | `_atom_site.pdbx_PDB_model_num` | NMR model index (1 for X-ray structures). The star schema builds its keys from this column, and the raw `_atom_site.pdbx_PDB_model_num` it repeats stays an ordinary atom column and is not in the minimal profile. |
 | `_atom_site.id` | mmCIF | Original atom-site serial number, from RCSB's mmCIF (not comparable to PDB-Redo's own numbering, see [Radiation damage (RABDAM)](scientific-methods.md#radiation-damage-rabdam)). |
 | `_atom_site.label_asym_id` / `_atom_site.label_entity_id` / `_atom_site.label_seq_id` | mmCIF | Canonical label chain, entity, and polymer sequence identifiers. The shared residue key prefers the chain and sequence identifiers. |
 | `_atom_site.pdbx_PDB_ins_code` | mmCIF | Insertion code used by the author-identity fallback key. `.`, `?`, blank, and null are normalized consistently. |

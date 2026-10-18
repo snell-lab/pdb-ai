@@ -65,7 +65,7 @@ def test_cli_refuses_a_setting_of_an_engine_left_off(
 
 def test_cli_accepts_a_setting_of_an_engine_a_profile_turns_on() -> None:
     _, settings = _parse_args(
-        ["1ABC", "--profile", "ml_minimal", "--sasa-accuracy", "fast"]
+        ["1ABC", "--profile", "minimal", "--sasa-accuracy", "fast"]
     )
 
     assert settings.options.choice("sasa_accuracy_mode") == "fast"

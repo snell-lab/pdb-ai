@@ -40,12 +40,12 @@ def test_profile_api_reports_a_profile_under_camel_case_keys(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     client = _client(tmp_path, monkeypatch)
-    profile = get_profile("ml_minimal")
+    profile = get_profile("minimal")
 
     payload = cast(list[dict[str, object]], client.get("/api/profiles").get_json())
 
-    assert next(item for item in payload if item["id"] == "ml_minimal") == {
-        "id": "ml_minimal",
+    assert next(item for item in payload if item["id"] == "minimal") == {
+        "id": "minimal",
         "name": profile.name,
         "description": profile.description,
         "filterMode": "include",

@@ -51,7 +51,7 @@ import requests
 
 from .artifacts import ArtifactKey, ArtifactStore
 from .options import DATASET_SHAPES, EngineOptions, OptionSpec
-from .profiles import CURATED_PROFILE_IDS
+from .profiles import DECLARED_PROFILE_IDS
 from .techniques import TECHNIQUE_IDS
 
 
@@ -93,17 +93,17 @@ def _check_sources(owner: str, sources: frozenset[str]) -> None:
 
 
 def _check_profiles(owner: str, profile_ids: Iterable[str]) -> None:
-    """Refuse profile identifiers that name no curated profile.
+    """Refuse profile identifiers that name no profile a column can declare.
 
     ``owner`` names the declaration in the message. A misspelled identifier
     would leave the column out of its profile without a word, so it raises
     ValueError.
     """
-    unknown = sorted(set(profile_ids) - CURATED_PROFILE_IDS)
+    unknown = sorted(set(profile_ids) - DECLARED_PROFILE_IDS)
     if unknown:
         raise ValueError(
             f"{owner} names unknown profile(s) {unknown}; use one or more of "
-            f"{', '.join(sorted(CURATED_PROFILE_IDS))}"
+            f"{', '.join(sorted(DECLARED_PROFILE_IDS))}"
         )
 
 
@@ -158,7 +158,8 @@ class ColumnSpec:
     granularity: ColumnGranularity = ColumnGranularity.ATOM
     dtype: ColumnDtype = "text"
     description: str = ""
-    # The curated profiles that keep the column, by identifier.
+    # The profiles that name the column, by identifier. Only the minimal
+    # profile is named column by column (see engines.core.profiles).
     profiles: frozenset[str] = frozenset()
     # The dataset sources the column exists for. An upload has no RCSB and
     # PDB-Redo versions to compare, for one, so a column whose name says which

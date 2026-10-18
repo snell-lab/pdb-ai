@@ -35,10 +35,7 @@ from ....structure.residue_identity import (
     first_nonempty_string_series,
 )
 from ...core import (
-    PROFILE_ML_MINIMAL,
-    PROFILE_RADIATION_SENSITIVITY,
-    PROFILE_RESEARCH_READY,
-    PROFILE_STRUCTURE_QUALITY,
+    MINIMAL_PROFILE,
     ColumnGranularity,
     EngineContext,
     EnginePhase,
@@ -57,12 +54,6 @@ from .fetch import (
     VALIDATION_STATUS_FETCH_FAILED,
     fetch_validation_report,
     validation_report_url,
-)
-
-# The dataset profiles each per-residue density-fit and Ramachandran column
-# belongs to.
-_RESIDUE_FIT_PROFILES = frozenset(
-    {PROFILE_RESEARCH_READY, PROFILE_RADIATION_SENSITIVITY, PROFILE_ML_MINIMAL}
 )
 
 # wwPDB issues validation reports for these methods. NMR entries have no
@@ -194,13 +185,12 @@ class ValidationAnnotationEngine:
                         "or OUTLIER."
                     ),
                 },
+                # The per-residue density fit and Ramachandran class are in the
+                # minimal profile.
                 profiles_by_name={
-                    "eds_rscc": _RESIDUE_FIT_PROFILES,
-                    "eds_rsr": _RESIDUE_FIT_PROFILES,
-                    "rama_class": _RESIDUE_FIT_PROFILES,
-                    "rotamer_class": frozenset(
-                        {PROFILE_RESEARCH_READY, PROFILE_RADIATION_SENSITIVITY}
-                    ),
+                    "eds_rscc": MINIMAL_PROFILE,
+                    "eds_rsr": MINIMAL_PROFILE,
+                    "rama_class": MINIMAL_PROFILE,
                 },
             ),
             *column_specs(
@@ -226,13 +216,6 @@ class ValidationAnnotationEngine:
                         "side-chain rotamer outliers."
                     ),
                 },
-                profiles=frozenset(
-                    {
-                        PROFILE_RESEARCH_READY,
-                        PROFILE_RADIATION_SENSITIVITY,
-                        PROFILE_STRUCTURE_QUALITY,
-                    }
-                ),
             ),
         ),
         techniques=_VALIDATION_TECHNIQUES,

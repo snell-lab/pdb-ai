@@ -7,16 +7,13 @@ warning becomes one message among the run's warnings, prefixed with its
 context, model, and code. The run report gets the status, whether it is ok,
 and the warning messages.
 
-Every SASA column belongs to the research-ready and radiation-sensitivity
-profiles. The ML profile takes only the columns that columns.py lists for it.
+The minimal profile takes only the columns that columns.py lists for it.
 """
 
 from __future__ import annotations
 
 from ...core import (
-    PROFILE_ML_MINIMAL,
-    PROFILE_RADIATION_SENSITIVITY,
-    PROFILE_RESEARCH_READY,
+    MINIMAL_PROFILE,
     ColumnGranularity,
     ColumnSpec,
     EngineContext,
@@ -71,13 +68,7 @@ class SasaEngine:
                     else "text"
                 ),
                 description=SASA_COLUMN_DESCRIPTIONS[name],
-                profiles=frozenset(
-                    {
-                        PROFILE_RESEARCH_READY,
-                        PROFILE_RADIATION_SENSITIVITY,
-                        *((PROFILE_ML_MINIMAL,) if name in ML_PROFILE_COLUMNS else ()),
-                    }
-                ),
+                profiles=MINIMAL_PROFILE if name in ML_PROFILE_COLUMNS else frozenset(),
             )
             for name in ALL_OUTPUT_COLUMNS
         ),

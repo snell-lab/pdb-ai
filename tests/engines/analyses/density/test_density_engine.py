@@ -813,7 +813,8 @@ def test_a_run_writes_the_columns_of_the_sources_it_reads() -> None:
     assert enabled(_BOTH) == {*PDB_REDO_COLUMN_NAMES, *WWPDB_COLUMN_NAMES}
 
 
-def test_only_the_radiation_profile_turns_the_engine_on() -> None:
-    assert "include_density" in get_profile("radiation_sensitivity").toggles
-    assert "include_density" not in get_profile("research_ready").toggles
-    assert "include_density" not in get_profile("ml_minimal").toggles
+def test_no_profile_turns_the_engine_on() -> None:
+    # The maps cost a download per entry, so density is always the user's
+    # choice. The standard profile keeps its columns when it is on.
+    for profile in ("all", "standard", "minimal"):
+        assert "include_density" not in get_profile(profile).toggles

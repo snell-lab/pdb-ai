@@ -7,7 +7,7 @@ from typing import Any, cast
 import pytest
 
 from pdbai.engines.core import (
-    PROFILE_ML_MINIMAL,
+    PROFILE_MINIMAL,
     ArtifactKey,
     ArtifactStore,
     ColumnGranularity,
@@ -97,7 +97,7 @@ def test_column_specs_share_settings_and_override_them_by_name() -> None:
         granularity_by_name={"flagged": ColumnGranularity.STRUCTURE},
         dtype_by_name={"score": "numeric"},
         descriptions={"score": "The score."},
-        profiles=frozenset({PROFILE_ML_MINIMAL}),
+        profiles=frozenset({PROFILE_MINIMAL}),
         profiles_by_name={"flagged": frozenset()},
         sources_by_name={"flagged": frozenset({"download"})},
     )
@@ -108,7 +108,7 @@ def test_column_specs_share_settings_and_override_them_by_name() -> None:
         ColumnGranularity.RESIDUE,
     )
     assert first.description == "The score."
-    assert first.profiles == frozenset({PROFILE_ML_MINIMAL})
+    assert first.profiles == frozenset({PROFILE_MINIMAL})
     assert (second.dtype, second.granularity) == ("text", ColumnGranularity.STRUCTURE)
     assert second.description == "Scorer engine output: flagged."
     assert second.profiles == frozenset()

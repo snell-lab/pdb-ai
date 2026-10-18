@@ -9,8 +9,8 @@ import pytest
 from pdbai.column_filtering import matches_glob
 from pdbai.engines.catalog import get_engine_registry
 from pdbai.engines.core import (
-    PROFILE_RESEARCH_READY,
-    PROFILE_STRUCTURE_QUALITY,
+    PROFILE_MINIMAL,
+    PROFILE_STANDARD,
     ColumnDtype,
     ColumnSpec,
     DatasetSource,
@@ -130,13 +130,19 @@ def test_disabled_columns_follow_engine_options() -> None:
 def test_get_profile_ignores_case_and_rejects_an_unknown_identifier() -> None:
     for profile in PROFILES:
         assert get_profile(f" {profile.id.upper()} ") is profile
-    with pytest.raises(ValueError, match="profile must be one of all, research_ready"):
+    with pytest.raises(
+        ValueError, match="profile must be one of all, standard, minimal"
+    ):
         get_profile("not-a-profile")
+
+
+_NAMED_PROFILES = [profile for profile in PROFILES if profile.selection == "named"]
 
 
 def test_profiles_keep_their_member_columns_and_turn_on_their_toggles() -> None:
     flags = get_engine_registry().flag_names()
-    for profile in PROFILES:
+    assert [profile.id for profile in _NAMED_PROFILES] == [PROFILE_MINIMAL]
+    for profile in _NAMED_PROFILES:
         members = [
             spec
             for spec in declared_column_specs()
@@ -161,8 +167,47 @@ def test_the_all_profile_filters_nothing_and_turns_nothing_on() -> None:
     assert profile.toggles == ()
 
 
+def test_the_standard_profile_keeps_every_declared_column_and_turns_nothing_on() -> (
+    None
+):
+    profile = get_profile(PROFILE_STANDARD)
+
+    assert profile.filter_mode == "include"
+    assert profile.toggles == ()
+    for spec in declared_column_specs():
+        assert any(matches_glob(spec.name, selector) for selector in profile.columns), (
+            spec.name
+        )
+    # The same narrowest globs stand for the source variants as in minimal.
+    assert "bnet*" in profile.columns
+    assert "bnet_percentile*" in profile.columns
+
+
+def test_the_standard_profile_follows_the_engines_the_run_enables() -> None:
+    plain = resolve_run_settings(
+        {}, technique="x_ray_diffraction", profile_id=PROFILE_STANDARD
+    )
+    with_density = resolve_run_settings(
+        {"include_density": True},
+        technique="x_ray_diffraction",
+        profile_id=PROFILE_STANDARD,
+    )
+
+    assert plain.toggles_turned_on == ()
+    assert plain.options.flag("include_rabdam") is False
+    for settings in (plain, with_density):
+        assert settings.uses_profile_filter is True
+        assert _unmatched_selectors(settings.column_filter_list, settings.options) == []
+    plain_list = set(plain.column_filter_list or ())
+    with_list = set(with_density.column_filter_list or ())
+    assert "pdb_id" in plain_list
+    assert not any(selector.startswith("density_") for selector in plain_list)
+    assert "density_fofc_sigma_pdb_redo" in with_list
+    assert plain_list < with_list
+
+
 def test_a_profile_lists_source_variants_under_their_narrowest_glob() -> None:
-    columns = get_profile(PROFILE_RESEARCH_READY).columns
+    columns = get_profile(PROFILE_MINIMAL).columns
 
     # bnet* also matches the percentile columns. Those are listed under the
     # narrower bnet_percentile*, so bnet* stays for the plain Bnet columns.
@@ -389,12 +434,12 @@ def test_order_columns_uses_display_order_then_the_given_order() -> None:
 
 def test_a_profile_turns_on_only_the_toggles_the_technique_allows() -> None:
     options = get_engine_registry().with_defaults(
-        EngineOptions(technique="electron_microscopy", values={"include_uniprot": True})
+        EngineOptions(technique="electron_microscopy", values={"include_sasa": True})
     )
 
-    settings = apply_profile(options, PROFILE_STRUCTURE_QUALITY)
+    settings = apply_profile(options, PROFILE_MINIMAL)
 
-    # UniProt was already on, and RABDAM does not apply to electron microscopy.
+    # SASA was already on, and RABDAM does not apply to electron microscopy.
     assert settings.toggles_turned_on == ("include_validation",)
     assert settings.toggles_ruled_out == ("include_rabdam",)
     assert settings.options.flag("include_validation") is True
@@ -417,9 +462,6 @@ def test_no_profile_leaves_the_options_and_the_requested_filter_alone() -> None:
     assert settings.uses_profile_filter is False
 
 
-_CURATED_PROFILES = [profile for profile in PROFILES if profile.filter_mode]
-
-
 def _unmatched_selectors(
     selectors: tuple[str, ...] | None, options: EngineOptions
 ) -> list[str]:
@@ -439,7 +481,7 @@ def _unmatched_selectors(
 @pytest.mark.parametrize(
     "technique", ["electron_microscopy", "solution_nmr", "solution_scattering"]
 )
-@pytest.mark.parametrize("profile", _CURATED_PROFILES, ids=lambda p: p.id)
+@pytest.mark.parametrize("profile", _NAMED_PROFILES, ids=lambda p: p.id)
 def test_a_profile_filter_leaves_out_the_columns_of_ruled_out_engines(
     technique: str, profile: ColumnProfile
 ) -> None:
@@ -455,7 +497,7 @@ def test_a_profile_filter_leaves_out_the_columns_of_ruled_out_engines(
 
 
 def test_electron_microscopy_drops_the_rabdam_selectors_and_keeps_the_rest() -> None:
-    profile = get_profile(PROFILE_RESEARCH_READY)
+    profile = get_profile(PROFILE_MINIMAL)
 
     xray = resolve_run_settings(
         {}, technique="x_ray_diffraction", profile_id=profile.id
@@ -476,7 +518,7 @@ def test_electron_microscopy_drops_the_rabdam_selectors_and_keeps_the_rest() -> 
         }
         assert owners == {"rabdam"}, selector
     # Validation applies to electron microscopy, so its columns stay.
-    assert "clashscore" in em.column_filter_list
+    assert "eds_rscc" in em.column_filter_list
     assert em.toggles_ruled_out == ("include_rabdam",)
 
 
@@ -484,7 +526,7 @@ def test_a_requested_filter_is_kept_whole_under_a_ruling_out_technique() -> None
     settings = resolve_run_settings(
         {},
         technique="electron_microscopy",
-        profile_id=PROFILE_RESEARCH_READY,
+        profile_id=PROFILE_MINIMAL,
         column_filter_mode="include",
         column_filter_list=["pdb_id", "bnet*"],
     )

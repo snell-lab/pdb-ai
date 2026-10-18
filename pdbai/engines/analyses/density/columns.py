@@ -27,7 +27,6 @@ own atoms. Every column of the wwPDB validation maps ends in _wwpdb.
 from __future__ import annotations
 
 from ...core import (
-    PROFILE_RADIATION_SENSITIVITY,
     ColumnGranularity,
     ColumnSpec,
     EngineOptions,
@@ -439,9 +438,6 @@ DENSITY_COLUMNS: tuple[ColumnSpec, ...] = tuple(
         ),
         dtype="text" if name in _TEXT_COLUMNS else "numeric",
         description=DESCRIPTIONS[name],
-        # The maps cost a download per entry, so only the profile made for
-        # radiation-damage features switches the engine on.
-        profiles=frozenset({PROFILE_RADIATION_SENSITIVITY}),
     )
     for name in (*PDB_REDO_COLUMN_NAMES, *WWPDB_COLUMN_NAMES)
 )

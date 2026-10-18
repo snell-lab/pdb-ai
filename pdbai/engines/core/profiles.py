@@ -1,4 +1,4 @@
-"""The identifiers of the curated column profiles a column can belong to.
+"""The identifiers of the column profiles a column can belong to.
 
 A column names the profiles it belongs to in ColumnSpec.profiles, and an
 engine may add glob selectors per profile in EngineSpec.profile_patterns. The
@@ -7,30 +7,24 @@ on, live in pdbai.profiles. Only the identifiers are here. That lets an
 engine declare membership without importing pdbai.profiles, which imports
 the engine registry and the schema.
 
-The profile "all" has no identifier here, since it keeps every column and no
-column needs to name it. CURATED_PROFILE_IDS is every other profile.
+Only the minimal profile is declared column by column. The profile "all"
+keeps every column a run writes, and "standard" every column PDB-AI declares,
+so no column needs to name either. MINIMAL_PROFILE is the value a column of
+the minimal profile gives ColumnSpec.profiles, and DECLARED_PROFILE_IDS the
+profiles a column may name.
 """
 
 from __future__ import annotations
 
-PROFILE_RESEARCH_READY = "research_ready"
-PROFILE_RADIATION_SENSITIVITY = "radiation_sensitivity"
-PROFILE_ML_MINIMAL = "ml_minimal"
-PROFILE_STRUCTURE_QUALITY = "structure_quality"
+PROFILE_STANDARD = "standard"
+PROFILE_MINIMAL = "minimal"
 
-CURATED_PROFILE_IDS = frozenset(
-    {
-        PROFILE_RESEARCH_READY,
-        PROFILE_RADIATION_SENSITIVITY,
-        PROFILE_ML_MINIMAL,
-        PROFILE_STRUCTURE_QUALITY,
-    }
-)
+MINIMAL_PROFILE = frozenset({PROFILE_MINIMAL})
+DECLARED_PROFILE_IDS = MINIMAL_PROFILE
 
 __all__ = [
-    "CURATED_PROFILE_IDS",
-    "PROFILE_ML_MINIMAL",
-    "PROFILE_RADIATION_SENSITIVITY",
-    "PROFILE_RESEARCH_READY",
-    "PROFILE_STRUCTURE_QUALITY",
+    "DECLARED_PROFILE_IDS",
+    "MINIMAL_PROFILE",
+    "PROFILE_MINIMAL",
+    "PROFILE_STANDARD",
 ]

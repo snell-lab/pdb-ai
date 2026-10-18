@@ -255,7 +255,7 @@ pdb-ai/
 │   │   │   ├── contracts.py             # Spec, context, result, column contracts
 │   │   │   ├── options.py               # EngineOptions and OptionSpec
 │   │   │   ├── artifacts.py             # Typed ArtifactKey values
-│   │   │   ├── profiles.py              # Curated profile identifiers
+│   │   │   ├── profiles.py              # Column profile identifiers
 │   │   │   ├── registry.py              # Registration, ordering, artifact checks
 │   │   │   ├── coordinator.py           # Phase execution, merging, failures
 │   │   │   ├── tables.py                # Engine-table validation and site_id

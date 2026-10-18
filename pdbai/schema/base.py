@@ -22,11 +22,7 @@ descriptions ends with the same sentence on when the value is missing.
 from __future__ import annotations
 
 from ..engines.core import (
-    CURATED_PROFILE_IDS,
-    PROFILE_ML_MINIMAL,
-    PROFILE_RADIATION_SENSITIVITY,
-    PROFILE_RESEARCH_READY,
-    PROFILE_STRUCTURE_QUALITY,
+    MINIMAL_PROFILE,
     ColumnDtype,
     ColumnGranularity,
     ColumnSpec,
@@ -38,11 +34,6 @@ from ..structure.mmcif_parser import (
 )
 from ..structure.residue_identity import RESIDUE_NUMBERING_COLUMN
 from .contracts import ColumnRole, DatasetColumnSpec
-
-_RESEARCH_RADIATION = frozenset({PROFILE_RESEARCH_READY, PROFILE_RADIATION_SENSITIVITY})
-_RESEARCH_RADIATION_ML = _RESEARCH_RADIATION | {PROFILE_ML_MINIMAL}
-_RESEARCH_RADIATION_STRUCTURE = _RESEARCH_RADIATION | {PROFILE_STRUCTURE_QUALITY}
-_RESEARCH_STRUCTURE = frozenset({PROFILE_RESEARCH_READY, PROFILE_STRUCTURE_QUALITY})
 
 # The backbone atom names as a description lists them, in the parser's order.
 _BACKBONE_ATOM_LIST = (
@@ -109,7 +100,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "pdb_id",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=frozenset(
             {"chain_author_identity", "residue_author_identity", "structure_key"}
         ),
@@ -124,7 +115,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "chain_id",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=frozenset({"chain_author_identity", "residue_author_identity"}),
         description=(
             "Chain identifier. It is the author-assigned _atom_site.auth_asym_id, "
@@ -136,7 +127,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "res_num",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=frozenset({"residue_author_identity"}),
         description=(
             "Residue sequence identifier. It is the author-assigned "
@@ -149,7 +140,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "res_name",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=frozenset({"residue_author_identity"}),
         description=(
             "Residue or component name. It is the author-assigned "
@@ -161,7 +152,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "atom_name",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_ATOM_IDENTITY_ROLES,
         description="Atom name from _atom_site.label_atom_id.",
     ),
@@ -169,7 +160,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "element",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_ATOM_IDENTITY_ROLES,
         description="Chemical element symbol from _atom_site.type_symbol.",
     ),
@@ -177,7 +168,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "is_hetatm",
         granularity=ColumnGranularity.ATOM,
         dtype="boolean",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_ATOM_IDENTITY_ROLES,
         description="True when _atom_site.group_PDB classifies the site as HETATM.",
     ),
@@ -185,7 +176,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "occupancy",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_ATOM_IDENTITY_ROLES,
         description="Refined atom-site occupancy from _atom_site.occupancy.",
     ),
@@ -193,7 +184,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "occupancy_all_conformers",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "The atom's occupancy summed over every alternate conformer the file "
             "models it in, including conformers the parser drops; equal to "
@@ -207,7 +198,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "conformer_count",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Number of alternate conformers (distinct _atom_site.label_alt_id "
             "values) the file models the atom in, including those the parser "
@@ -218,7 +209,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "model_num",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_OPTIONAL_RESIDUE_KEY_AND_CHAIN_ROLES,
         description=(
             "Coordinate-model number containing the atom site, from "
@@ -229,14 +220,14 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "_atom_site.id",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description="Atom-site row identifier assigned in the source mmCIF file.",
     ),
     _parser_column(
         "_atom_site.label_asym_id",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_OPTIONAL_RESIDUE_KEY_AND_CHAIN_ROLES,
         description="PDB-assigned asymmetric-unit chain identifier used by mmCIF relationships.",
     ),
@@ -244,7 +235,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "_atom_site.label_entity_id",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_OPTIONAL_RESIDUE_KEY_AND_CHAIN_ROLES,
         description="Identifier of the mmCIF entity to which the atom site belongs.",
     ),
@@ -252,7 +243,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "_atom_site.label_seq_id",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_OPTIONAL_RESIDUE_KEY_ROLES,
         description="PDB-assigned polymer sequence position within the atom site's entity.",
     ),
@@ -260,7 +251,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "_atom_site.pdbx_PDB_ins_code",
         granularity=ColumnGranularity.ATOM,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         roles=_OPTIONAL_RESIDUE_KEY_ROLES,
         description="Author insertion code that disambiguates residues sharing a sequence number.",
     ),
@@ -278,7 +269,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "is_backbone",
         granularity=ColumnGranularity.ATOM,
         dtype="boolean",
-        profiles=_RESEARCH_RADIATION_ML,
+        profiles=MINIMAL_PROFILE,
         roles=_ATOM_IDENTITY_ROLES,
         description=f"True for non-HETATM atoms named {_BACKBONE_ATOM_LIST}.",
     ),
@@ -286,7 +277,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "is_sidechain",
         granularity=ColumnGranularity.ATOM,
         dtype="boolean",
-        profiles=_RESEARCH_RADIATION,
         roles=_ATOM_IDENTITY_ROLES,
         description="True for non-HETATM atoms not classified as protein backbone atoms.",
     ),
@@ -312,14 +302,14 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "_atom_site.B_iso_or_equiv",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description="Isotropic or equivalent isotropic atomic displacement parameter in Å².",
     ),
     _parser_column(
         "residue_mean_bfactor",
         granularity=ColumnGranularity.RESIDUE,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Mean isotropic B factor across atom rows sharing one canonical "
             "model-aware residue identity. Atoms without a reported B factor are "
@@ -332,7 +322,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u11",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION,
         description=(
             "U[1][1] component of the atom's anisotropic displacement tensor "
             "in Å². Missing when the atom has no anisotropic displacement record."
@@ -342,7 +331,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u22",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION,
         description=(
             "U[2][2] component of the atom's anisotropic displacement tensor "
             "in Å². Missing when the atom has no anisotropic displacement record."
@@ -352,7 +340,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u33",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION,
         description=(
             "U[3][3] component of the atom's anisotropic displacement tensor "
             "in Å². Missing when the atom has no anisotropic displacement record."
@@ -362,7 +349,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u12",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION,
         description=(
             "U[1][2] component of the atom's anisotropic displacement tensor "
             "in Å². Missing when the atom has no anisotropic displacement record."
@@ -372,7 +358,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u13",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION,
         description=(
             "U[1][3] component of the atom's anisotropic displacement tensor "
             "in Å². Missing when the atom has no anisotropic displacement record."
@@ -382,7 +367,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u23",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION,
         description=(
             "U[2][3] component of the atom's anisotropic displacement tensor "
             "in Å². Missing when the atom has no anisotropic displacement record."
@@ -392,7 +376,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "u_equivalent",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_ML,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Equivalent isotropic displacement U, calculated as "
             "(U11 + U22 + U33) / 3 in Å². Missing when the atom has no "
@@ -403,7 +387,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "b_anisotropy",
         granularity=ColumnGranularity.ATOM,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_ML,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Ratio of the largest to the smallest eigenvalue of the atom's "
             "anisotropic U tensor, where 1 indicates isotropic displacement. "
@@ -415,7 +399,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         RESIDUE_NUMBERING_COLUMN,
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Which identifiers chain_id and res_num hold for the structure. It is "
             "author when the file gives an author chain and an author residue "
@@ -429,7 +413,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "resolution",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Resolution of the refined model in Å: _refine.ls_d_res_high, else "
             "_refine_hist.d_res_high, else _reflns.d_resolution_high, else the "
@@ -444,7 +428,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "resolution_xray",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Resolution in Å of the refinement against the X-ray data, the "
             "_refine.ls_d_res_high of the record that _refine.pdbx_refine_id "
@@ -457,7 +440,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "resolution_neutron",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Resolution in Å of the refinement against the neutron data, the "
             "_refine.ls_d_res_high of the record that _refine.pdbx_refine_id "
@@ -472,7 +454,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
             f"{prefix}_{suffix}",
             granularity=ColumnGranularity.STRUCTURE,
             dtype="numeric",
-            profiles=_RESEARCH_RADIATION_STRUCTURE,
             description=(
                 f"{label} of the refinement against the {method} data, the "
                 f"{item} of the record that _refine.pdbx_refine_id names "
@@ -495,7 +476,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "r_work",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Refinement R factor calculated for reflections in the working set."
             + _FROM_RCSB
@@ -505,7 +486,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "r_free",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Cross-validation R factor calculated for the held-out reflection set."
             + _FROM_RCSB
@@ -515,7 +496,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "refinement_program",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Name of the program the model was refined with, the _software.name "
             "of the file's first _software record classified as refinement, as "
@@ -528,7 +508,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "refinement_program_version",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Version of refinement_program, the _software.version of the same "
             "record, as the depositors wrote it and in no fixed format. Missing "
@@ -539,7 +518,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "refinement_programs",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Every refinement program the entry names (_software.name of the "
             "records classified as refinement), each listed once, "
@@ -554,7 +532,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "tls_group_count",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Number of TLS groups the refinement used, the number of "
             "_pdbx_refine_tls records in the file. 0 for a file that reports a "
@@ -566,7 +543,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "tls_residual_adp_flag",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "The archive's note on the B factors of an entry refined with TLS, "
             "the first _refine.pdbx_TLS_residual_ADP_flag the file states, as "
@@ -581,7 +557,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "anisotropic_atom_fraction",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Fraction (0-1) of the file's atom sites that have an anisotropic "
             "displacement record (_atom_site_anisotrop), over every alternate "
@@ -596,14 +571,12 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "space_group",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_STRUCTURE,
         description=("Hermann–Mauguin symbol of the crystal space group." + _FROM_RCSB),
     ),
     _parser_column(
         "reflns_completeness",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Percentage of theoretically possible reflections observed." + _FROM_RCSB
         ),
@@ -612,7 +585,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "cc_half",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Correlation coefficient between randomly divided half datasets (CC1/2)."
             + _FROM_RCSB
@@ -622,7 +594,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "i_over_sigma",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Reported mean of each reflection's intensity divided by its "
             "uncertainty, from _reflns.pdbx_netI_over_sigmaI." + _FROM_RCSB
@@ -632,7 +603,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "wilson_b",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Wilson-plot estimate of the overall isotropic B factor in Å²." + _FROM_RCSB
         ),
@@ -641,7 +611,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "multiplicity",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Mean number of observations contributing to each unique reflection."
             + _FROM_RCSB
@@ -651,7 +620,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "unit_cell_volume",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_STRUCTURE,
         description=(
             "Unit-cell volume in Å³ calculated from the file's _cell lengths and "
             "angles. Missing when the file reports no complete cell, when the cell "
@@ -663,7 +631,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "solvent_content",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_STRUCTURE,
         description=(
             "Crystal solvent-volume fraction (0-1). Taken from the deposited "
             "_exptl_crystal.density_percent_sol, else converted from the deposited "
@@ -678,14 +645,12 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "radiation_wavelength",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=("Primary reported diffraction wavelength in Å." + _FROM_RCSB),
     ),
     _parser_column(
         "radiation_dose_MGy",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Absorbed X-ray dose in megagray (MGy), read from the first number "
             'followed by "MGy", "kGy", or "Gy" in the entry title, where '
@@ -699,7 +664,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "title",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Title of the entry, _struct.title. It is where depositors state a "
             "dose, a time delay, or a resting or intermediate state, none of "
@@ -710,7 +674,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "keywords",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Free-text keywords of the entry, _struct_keywords.text, as the "
             "depositors wrote them." + _FROM_RCSB
@@ -720,7 +683,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "mentions_time_resolved",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="boolean",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "True when the title or the keywords name a time-resolved or "
             "pump-probe experiment, in any spelling of those two words. This "
@@ -734,7 +696,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "is_serial_crystallography",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="boolean",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "True when the first diffraction record says that several crystals "
             "contributed to each data set, _diffrn.pdbx_serial_crystal_experiment. "
@@ -747,7 +708,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "sample_delivery_method",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "How a serial-crystallography sample reached the beam, such as "
             "injection or fixed target, from the first "
@@ -759,7 +719,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "xfel_pulse_duration_fs",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Average X-ray pulse duration in femtoseconds, from the first "
             "_pdbx_serial_crystallography_measurement record. Missing when none "
@@ -771,7 +730,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "is_high_radiation_dose",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="boolean",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "True when the dose stated in the entry title exceeds "
             f"{HIGH_RADIATION_DOSE_MGY:g} MGy. Missing when the title states none, "
@@ -783,7 +741,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "temperature_K",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Reported crystal temperature during data collection in kelvin."
             + _FROM_RCSB
@@ -793,7 +750,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "experimental_methods",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Every experimental method the entry reports (_exptl.method), "
             "each listed once, semicolon-separated in deposition order; a joint "
@@ -806,7 +763,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "is_multi_method",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="boolean",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "True when the entry reports more than one experimental method, so its "
             "model was refined against several kinds of data; false for a single "
@@ -817,7 +774,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "first_radiation_source",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "The first radiation source the entry reports, as the depositors "
             "wrote it in the first _diffrn_source.source row, without the "
@@ -828,7 +785,7 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "radiation_sources",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=CURATED_PROFILE_IDS,
+        profiles=MINIMAL_PROFILE,
         description=(
             "Every radiation source the entry reports (_diffrn_source.source), each "
             "listed once, semicolon-separated in deposition order and normalized to "
@@ -843,7 +800,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "synchrotron_site",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Reported synchrotron facility at which data were collected." + _FROM_RCSB
         ),
@@ -852,14 +808,12 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "detector_type",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=("Reported diffraction-detector type or model." + _FROM_RCSB),
     ),
     _parser_column(
         "collection_year",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=(
             "Calendar year of diffraction data collection, from the first "
             "_diffrn_detector.pdbx_collection_date reported to RCSB. Missing when "
@@ -871,7 +825,6 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "deposition_year",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_RADIATION_STRUCTURE,
         description=("Calendar year of the RCSB deposition date." + _FROM_RCSB),
     ),
     _parser_column(
@@ -888,14 +841,12 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         "crystal_pH",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
-        profiles=_RESEARCH_STRUCTURE,
         description=("Reported pH of the crystallization condition." + _FROM_RCSB),
     ),
     _parser_column(
         "crystallization_method",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="text",
-        profiles=_RESEARCH_STRUCTURE,
         description=("Reported method used to grow the crystal." + _FROM_RCSB),
     ),
     _parser_column(

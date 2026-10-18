@@ -199,27 +199,24 @@ def test_parse_search_accessions_reads_text_or_a_list_and_blank_as_not_set() -> 
 
 
 def test_profile_engines_the_technique_rules_out_are_left_off() -> None:
-    options = _options(
-        {"technique": "electron_microscopy", "profileId": "structure_quality"}
-    )
+    options = _options({"technique": "electron_microscopy", "profileId": "minimal"})
 
     assert options.technique == "electron_microscopy"
-    # The structure_quality profile asks for RABDAM, UniProt, and
-    # validation. Electron microscopy rules out RABDAM, so only the other
-    # two are switched on.
+    # The minimal profile asks for RABDAM, SASA, and validation. Electron
+    # microscopy rules out RABDAM, so only the other two are switched on.
     assert options.flag("include_rabdam") is False
-    assert options.flag("include_uniprot") is True
+    assert options.flag("include_sasa") is True
     assert options.flag("include_validation") is True
 
 
 def test_a_profile_applies_its_column_filter_to_api_requests_too() -> None:
     # The CLI and the browser apply a profile's column filter. An API client
     # that sends only the profile gets the same filter from the server.
-    profile = get_profile("ml_minimal")
-    settings = settings_from_request({"profileId": "ml_minimal"})
+    profile = get_profile("minimal")
+    settings = settings_from_request({"profileId": "minimal"})
     explicit = settings_from_request(
         {
-            "profileId": "ml_minimal",
+            "profileId": "minimal",
             "columnFilterMode": "exclude",
             "columnFilterList": "x",
         },
@@ -328,10 +325,10 @@ def test_profile_id_refuses_a_value_that_names_no_profile(
 
 
 def test_profile_id_ignores_case_and_a_blank_one_means_no_profile() -> None:
-    spelled = settings_from_request({"profileId": " ML_Minimal "})
+    spelled = settings_from_request({"profileId": " Minimal "})
     blank = settings_from_request({"profileId": " "})
 
-    assert spelled.profile == get_profile("ml_minimal")
+    assert spelled.profile == get_profile("minimal")
     assert blank.profile is None
 
 

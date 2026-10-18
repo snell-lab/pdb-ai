@@ -50,8 +50,8 @@ import pandas as pd
 
 from ....structure import alignment
 from ...core import (
-    CURATED_PROFILE_IDS,
-    PROFILE_STRUCTURE_QUALITY,
+    MINIMAL_PROFILE,
+    PROFILE_MINIMAL,
     STRUCTURE_CIF_PATH,
     ColumnGranularity,
     EngineContext,
@@ -309,14 +309,6 @@ _COMMON_PROFILE_PATTERNS = (
     "bnet_percentile*",
     "rabdam_alignment*",
 )
-# The structure-level subset the structure_quality profile keeps.
-_STRUCTURE_QUALITY_PROFILE_PATTERNS = (
-    "bnet*",
-    "bnet_percentile*",
-    "bdamage_coverage*",
-    "bdamage_scored_atom_count*",
-    "rabdam_alignment*",
-)
 
 _REPORT_FIELDS = (
     ReportField(
@@ -459,14 +451,7 @@ class RabdamEngine:
             ),
         ),
         report_fields=_REPORT_FIELDS,
-        profile_patterns=(
-            *(
-                (profile_id, _COMMON_PROFILE_PATTERNS)
-                for profile_id in sorted(CURATED_PROFILE_IDS)
-                if profile_id != PROFILE_STRUCTURE_QUALITY
-            ),
-            (PROFILE_STRUCTURE_QUALITY, _STRUCTURE_QUALITY_PROFILE_PATTERNS),
-        ),
+        profile_patterns=((PROFILE_MINIMAL, _COMMON_PROFILE_PATTERNS),),
         columns=column_specs(
             _OUTPUT_COLUMNS,
             group="RABDAM Fields",
@@ -491,15 +476,7 @@ class RabdamEngine:
                 for name in _OUTPUT_COLUMNS
                 if name.startswith(_STRUCTURE_LEVEL_PREFIXES)
             },
-            profiles=CURATED_PROFILE_IDS,
-            profiles_by_name={
-                name: (
-                    CURATED_PROFILE_IDS
-                    if name.startswith(_STRUCTURE_LEVEL_PREFIXES)
-                    else CURATED_PROFILE_IDS - {PROFILE_STRUCTURE_QUALITY}
-                )
-                for name in _OUTPUT_COLUMNS
-            },
+            profiles=MINIMAL_PROFILE,
         ),
         # BDamage and Bnet are defined on X-ray B factors, and the bundled Bnet
         # reference database was calibrated on X-ray refinements.

@@ -109,12 +109,14 @@ it.
   performs internally (for example, RABDAM with its default source fetches
   PDB-Redo's mmCIF, while AlphaFold Database performs entity-aware UniProt
   mapping).
-- **Column profiles.** Choose a pre-defined column preset from the dropdown. A
-  profile switches on the engines its columns need (except those the technique
-  rules out) and leaves every other switch as it is, and it fills in its column
-  filter. The server applies the same rule, so an API request naming only a
-  `profileId` gets the profile's engines and filter, with the columns of engines
-  the technique rules out left out. An explicit
+- **Column profiles.** Choose a pre-defined column preset from the dropdown
+  (`all`, `standard`, or `minimal`). The minimal profile switches on the
+  engines its columns need (except those the technique rules out) and leaves
+  every other switch as it is. Every profile fills in its column filter. The
+  server applies the same rule, so an API request naming only a `profileId`
+  gets the profile's engines and filter, with the columns the run does not
+  write left out: those of engines the technique rules out, and for `standard`
+  those of engines left off. An explicit
   `columnFilterMode`/`columnFilterList` in the request wins over the profile's.
   While the profile still applies, the page sends only the `profileId`, so the
   server's filter is the one used. Editing the filter the profile filled in, or

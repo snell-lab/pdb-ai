@@ -102,13 +102,15 @@ python -m pdbai 5MCC --workdir ./workspace \
   --include-pdb-redo
 ```
 
-Build the five-table star schema with the research-ready profile. A profile also
-turns on the engines its columns need, so this run fetches their data too.
+Build the five-table star schema with the standard profile, which keeps every
+column PDB-AI defines for the engines you enable and leaves out the raw mmCIF
+items it only passes through.
 
 ```bash
 python -m pdbai 5MCC --workdir ./workspace \
   --dataset-shape star_schema \
-  --profile research_ready
+  --include-rabdam --include-sasa \
+  --profile standard
 ```
 
 Build an electron-microscopy cohort. RABDAM and PDB-Redo do not apply to it and

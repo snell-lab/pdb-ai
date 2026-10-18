@@ -26,9 +26,6 @@ from pathlib import Path
 
 from ...core import (
     ENTRY_RECORD,
-    PROFILE_RADIATION_SENSITIVITY,
-    PROFILE_RESEARCH_READY,
-    PROFILE_STRUCTURE_QUALITY,
     ColumnGranularity,
     EngineContext,
     EngineOptions,
@@ -242,13 +239,6 @@ class AlphaFoldAnnotationEngine:
                         "entity using RCSB entity-reference mappings."
                     )
                 },
-                profiles=frozenset(
-                    {
-                        PROFILE_RESEARCH_READY,
-                        PROFILE_RADIATION_SENSITIVITY,
-                        PROFILE_STRUCTURE_QUALITY,
-                    }
-                ),
             ),
             *column_specs(
                 tuple(
@@ -269,13 +259,6 @@ class AlphaFoldAnnotationEngine:
                     )
                     for level in SEQUENCE_IDENTITY_LEVELS
                 },
-                profiles=frozenset(
-                    {
-                        PROFILE_RESEARCH_READY,
-                        PROFILE_RADIATION_SENSITIVITY,
-                        PROFILE_STRUCTURE_QUALITY,
-                    }
-                ),
             ),
             *column_specs(
                 (
@@ -320,7 +303,6 @@ class AlphaFoldAnnotationEngine:
                         "applicable."
                     ),
                 },
-                profiles=frozenset({PROFILE_RESEARCH_READY}),
             ),
         ),
     )
