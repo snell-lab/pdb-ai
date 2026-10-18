@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import stat
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -133,4 +134,44 @@ def test_concurrent_writers_leave_one_complete_file(tmp_path: Path) -> None:
 
     assert not errors, errors
     assert path.read_text(encoding="utf-8") in {f"writer {index}" for index in range(8)}
+    assert [entry.name for entry in tmp_path.iterdir()] == ["manifest.json"]
+
+
+def test_threads_writing_one_path_never_replace_it_at_the_same_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Windows refuses a rename onto a file another rename is still replacing,
+    # so renames of one path must not overlap. The probe records how many run
+    # at once; on Linux nothing would otherwise stop them overlapping.
+    path = tmp_path / "manifest.json"
+    real_replace = os.replace
+    active = 0
+    most_active = 0
+    count_lock = threading.Lock()
+
+    def probe(source: Path, target: Path) -> None:
+        nonlocal active, most_active
+        with count_lock:
+            active += 1
+            most_active = max(most_active, active)
+        time.sleep(0.002)
+        real_replace(source, target)
+        with count_lock:
+            active -= 1
+
+    monkeypatch.setattr("pdbai.atomic.os.replace", probe)
+    barrier = threading.Barrier(6)
+
+    def writer(index: int) -> None:
+        barrier.wait()
+        for _ in range(10):
+            write_text_atomically(path, f"writer {index}")
+
+    threads = [threading.Thread(target=writer, args=(index,)) for index in range(6)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert most_active == 1
     assert [entry.name for entry in tmp_path.iterdir()] == ["manifest.json"]

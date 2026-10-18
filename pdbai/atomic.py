@@ -11,11 +11,17 @@ it in place. The scratch file sits beside the target so that the rename stays
 within one file system, where it is atomic. The scratch file is flushed to
 disk before the rename. So a crash just after the rename cannot leave the
 target empty or truncated.
+
+Windows also refuses a rename onto a file that another rename is still
+replacing. Threads of one process that write the same file therefore take
+turns at the rename. Each path maps to one of a fixed set of locks, so the
+locks take the same memory however many files a run writes.
 """
 
 from __future__ import annotations
 
 import os
+import threading
 import time
 import uuid
 from collections.abc import Generator
@@ -35,7 +41,22 @@ _SCRATCH_NAME = ".{name}.{unique}.tmp"
 SCRATCH_NAME_EXTRA_BYTES = len(_SCRATCH_NAME.format(name="", unique="")) + 32
 
 
+# Two paths that share a lock only wait for each other's renames, which take
+# milliseconds, so a modest number of locks is enough.
+_REPLACE_LOCKS = tuple(threading.Lock() for _ in range(64))
+
+
+def _replace_lock(target: Path) -> threading.Lock:
+    key = os.path.normcase(os.path.abspath(target))
+    return _REPLACE_LOCKS[hash(key) % len(_REPLACE_LOCKS)]
+
+
 def _replace_retrying(source: Path, target: Path) -> None:
+    with _replace_lock(target):
+        _replace_with_retries(source, target)
+
+
+def _replace_with_retries(source: Path, target: Path) -> None:
     for delay in _REPLACE_RETRY_DELAYS_SECONDS:
         try:
             os.replace(source, target)
