@@ -8,6 +8,9 @@ of the entry, one at a time, and reads each at the positions of the atoms.
 From PDB-Redo's file it also makes the map of the model's calculated
 structure factors and reads it at the same positions.
 
+cell.py reads the deposited unit cell from the atom table, so that
+compute.py can check that a map's cell is the one the atoms were placed in.
+
 columns.py declares the atom columns and the structure columns of each map
 source, with a full description of each.
 
