@@ -132,13 +132,16 @@ dataset schema.
 
 ## Radiation dose
 
-The RCSB entry record has no dose field. `radiation_dose_MGy` is therefore the
+The RCSB entry record has no dose field. `title_dose_MGy` is therefore the
 first value given in MGy, kGy, or Gy in the entry title, as dose-series entries
 often state it there, and is missing for most entries. A value in kGy is divided
 by 1,000 and one in Gy by 1,000,000, a value may be written in scientific
 notation ("7.88x10^3 Gy"), and a dose rate, such as "40 kGy/s", is not read.
-Room-temperature and serial entries mostly state their dose in kGy.
-`is_high_radiation_dose` is true above 5 MGy, a cut-off PDB-AI chose.
+Room-temperature and serial entries mostly state their dose in kGy. The value
+is what the depositor wrote, not a measurement: a title copied from another
+entry, or one at odds with its paper, gives a wrong dose, so check it against
+the paper before relying on it.
+`is_high_title_dose` is true above 5 MGy, a cut-off PDB-AI chose.
 
 ## Radiation damage (RABDAM)
 

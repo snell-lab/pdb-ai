@@ -225,7 +225,7 @@ def extract_experiment_fields(
     info["title"] = title
     info["keywords"] = keywords
     info["mentions_time_resolved"] = _mentions_time_resolved(title, keywords)
-    info["radiation_dose_MGy"] = _dose_from_title(title)
+    info["title_dose_MGy"] = _dose_from_title(title)
     info["resolution_rcsb"] = _resolution(entry_json)
     info["space_group"] = to_text(
         object_dict(entry_json.get("symmetry")).get("space_group_name_H_M")

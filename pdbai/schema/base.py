@@ -29,7 +29,7 @@ from ..engines.core import (
 )
 from ..structure.mmcif_parser import (
     BACKBONE_ATOM_NAMES,
-    HIGH_RADIATION_DOSE_MGY,
+    HIGH_TITLE_DOSE_MGY,
     MEAN_RESIDUE_MASS_DA,
 )
 from ..structure.residue_identity import RESIDUE_NUMBERING_COLUMN
@@ -648,16 +648,19 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         description=("Primary reported diffraction wavelength in Å." + _FROM_RCSB),
     ),
     _parser_column(
-        "radiation_dose_MGy",
+        "title_dose_MGy",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="numeric",
         description=(
-            "Absorbed X-ray dose in megagray (MGy), read from the first number "
-            'followed by "MGy", "kGy", or "Gy" in the entry title, where '
-            "dose-series entries state it, a value in kGy divided by 1,000 and "
-            'one in Gy by 1,000,000. A number may be written as "7.88x10^3". A '
-            "dose rate is not read. Missing when the title states none, as for "
-            "most entries, and always for an uploaded structure."
+            "Absorbed X-ray dose as the entry title states it, in megagray (MGy), "
+            'read from the first number followed by "MGy", "kGy", or "Gy" in the '
+            "title, where dose-series entries state it, a value in kGy divided by "
+            "1,000 and one in Gy by 1,000,000. A number may be written as "
+            '"7.88x10^3". A dose rate is not read. The archive records no dose, so '
+            "this is the depositor's statement and not a measured value, and a "
+            "title copied from another entry or at odds with its paper gives a "
+            "wrong one. Missing when the title states none, as for most entries, "
+            "and always for an uploaded structure."
         ),
     ),
     _parser_column(
@@ -727,12 +730,12 @@ BASE_COLUMN_SPECS: tuple[DatasetColumnSpec, ...] = (
         ),
     ),
     _parser_column(
-        "is_high_radiation_dose",
+        "is_high_title_dose",
         granularity=ColumnGranularity.STRUCTURE,
         dtype="boolean",
         description=(
             "True when the dose stated in the entry title exceeds "
-            f"{HIGH_RADIATION_DOSE_MGY:g} MGy. Missing when the title states none, "
+            f"{HIGH_TITLE_DOSE_MGY:g} MGy. Missing when the title states none, "
             "which is the case for most entries, so absent is not the same as "
             "below threshold."
         ),

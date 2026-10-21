@@ -51,7 +51,7 @@ def test_mmcif_parser_builds_atom_rows_and_selects_one_conformer(
     result = _parse(
         minimal_cif,
         {
-            "radiation_dose_MGy": 6.0,
+            "title_dose_MGy": 6.0,
             "citation_doi": "10.1000/example",
         },
     )
@@ -63,7 +63,7 @@ def test_mmcif_parser_builds_atom_rows_and_selects_one_conformer(
     assert dataframe["resolution"].unique().tolist() == [1.5]
     assert dataframe["unit_cell_volume"].iloc[0] == 6000.0
     assert dataframe["citation_doi"].unique().tolist() == ["10.1000/example"]
-    assert dataframe["is_high_radiation_dose"].all()
+    assert dataframe["is_high_title_dose"].all()
     protein = dataframe.loc[~dataframe["is_hetatm"]]
     assert protein["residue_mean_bfactor"].unique().tolist() == [30.0]
     assert protein["is_backbone"].all()
@@ -283,8 +283,8 @@ def test_solvent_content_is_missing_rather_than_clipped(tmp_path: Path) -> None:
     ("metadata", "expected"),
     [
         ({}, None),
-        ({"radiation_dose_MGy": 1.0}, False),
-        ({"radiation_dose_MGy": 9.0}, True),
+        ({"title_dose_MGy": 1.0}, False),
+        ({"title_dose_MGy": 9.0}, True),
     ],
 )
 def test_radiation_flags_distinguish_unreported_from_below_threshold(
@@ -295,7 +295,7 @@ def test_radiation_flags_distinguish_unreported_from_below_threshold(
 
     dataframe = _parse(cif, metadata).dataframe
 
-    flag = dataframe["is_high_radiation_dose"]
+    flag = dataframe["is_high_title_dose"]
     assert isinstance(flag.dtype, pd.BooleanDtype)
     if expected is None:
         assert flag.isna().all()
@@ -713,8 +713,8 @@ def test_quoted_values_and_rcsb_text_lose_surrounding_whitespace(
 def test_rcsb_metadata_that_is_not_a_number_fails_the_entry(tmp_path: Path) -> None:
     cif = _write_cif(tmp_path, _ONE_ATOM)
 
-    with pytest.raises(RuntimeError, match=r"'radiation_dose_MGy' is 'high'"):
-        _parse(cif, {"radiation_dose_MGy": "high"})
+    with pytest.raises(RuntimeError, match=r"'title_dose_MGy' is 'high'"):
+        _parse(cif, {"title_dose_MGy": "high"})
 
 
 def test_repeated_rcsb_methods_and_sources_are_listed_once(tmp_path: Path) -> None:

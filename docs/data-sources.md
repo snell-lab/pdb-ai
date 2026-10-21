@@ -75,7 +75,7 @@ from PDB-Redo as it would be without a copy, so a partial copy is safe.
 ## Known issues
 
 - **Missing experimental metadata.** Many RCSB fields are sparsely populated
-  (e.g. `radiation_dose_MGy`, `wilson_b`, `crystal_pH`). These columns will
+  (e.g. `title_dose_MGy`, `wilson_b`, `crystal_pH`). These columns will
   contain NaN for most structures.
 - **PDB-Redo coverage.** PDB-Redo does not cover every entry (e.g. `1CRN` and
   `4HHB` have no PDB-Redo entry). For those, the PDB-Redo comparison and

@@ -90,7 +90,7 @@ from .residue_identity import (
 BACKBONE_ATOM_NAMES: tuple[str, ...] = ("N", "CA", "C", "O", "OXT")
 
 # The radiation dose in MGy above which an entry is flagged as high.
-HIGH_RADIATION_DOSE_MGY = 5.0
+HIGH_TITLE_DOSE_MGY = 5.0
 
 # Matthews (1968) gives the protein-occupied fraction of a crystal as
 # 1.23 / Vm, with Vm in Å³ per dalton. 110 Da is the customary mean residue
@@ -162,7 +162,7 @@ _RCSB_METADATA_KEYS = (
     "keywords",
     "beamline",
     "wavelength",
-    "radiation_dose_MGy",
+    "title_dose_MGy",
     "temperature_K",
     "crystal_pH",
     "crystallization_method",
@@ -757,9 +757,9 @@ def _atom_rows(
         index=dataframe.index,
     )
     dataframe = pd.concat([dataframe, metadata_columns], axis=1)
-    dataframe["is_high_radiation_dose"] = _threshold_flag(
-        _metadata_number(rcsb_metadata, "radiation_dose_MGy"),
-        HIGH_RADIATION_DOSE_MGY,
+    dataframe["is_high_title_dose"] = _threshold_flag(
+        _metadata_number(rcsb_metadata, "title_dose_MGy"),
+        HIGH_TITLE_DOSE_MGY,
         dataframe.index,
     )
     # These two are kept missing, never false, when the record says nothing.
@@ -948,7 +948,7 @@ def parse_mmcif_atom_rows(
 
 __all__ = [
     "BACKBONE_ATOM_NAMES",
-    "HIGH_RADIATION_DOSE_MGY",
+    "HIGH_TITLE_DOSE_MGY",
     "MEAN_RESIDUE_MASS_DA",
     "AtomSiteParseResult",
     "parse_mmcif_atom_rows",

@@ -131,7 +131,7 @@ def test_temperature_is_the_collection_temperature_not_the_growth_temperature() 
 def test_dose_is_recovered_from_a_dose_series_title() -> None:
     result = extract_experiment_fields(RECORDED_5MCC_ENTRY)
 
-    assert result["radiation_dose_MGy"] == 1.11
+    assert result["title_dose_MGy"] == 1.11
 
 
 def test_wavelength_and_beamline_come_from_the_real_entry() -> None:
@@ -320,7 +320,7 @@ def test_dose_is_read_only_from_a_whole_number_before_mgy_kgy_or_gy(
 ) -> None:
     result = extract_experiment_fields({"struct": {"title": title}})
 
-    assert result["radiation_dose_MGy"] == expected
+    assert result["title_dose_MGy"] == expected
 
 
 def _cache_envelope(entry: dict[str, Any], *, age_seconds: float = 0.0) -> str:
