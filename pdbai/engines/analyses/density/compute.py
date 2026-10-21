@@ -14,15 +14,15 @@ its root-mean-square deviation over the unit cell, which is the scale map
 viewers call sigma. The mean of a map made without the F(000) term is zero
 to rounding, and it is subtracted all the same.
 
-PDB-Redo's file also holds the calculated structure factors of its model,
-and their map is made third and read at the same points. It is left on the
-scale of the coefficients, less its mean, as the density the model places
-at an atom. The 2mFo−DFc density less the calculated density, on that same
-scale, is the difference density beside it. The file's own difference
-coefficients are that difference at every reflection, or half of it in a
-twinned refinement, so taking the difference of the two readings puts every
-entry on one scale. The wwPDB validation files hold no calculated structure
-factors, so they give neither value.
+PDB-Redo's file also holds the calculated structure factors of its model.
+Their map is made third and read at the same points. It is not divided by
+its root-mean-square deviation. It stays on the scale of the coefficients,
+with its mean subtracted, and gives the density the model places at an atom.
+The 2mFo−DFc density minus this calculated density, on the same scale, gives
+the difference density. It is taken from the two readings rather than from
+the file's own difference coefficients, which a twinned refinement halves,
+so every entry is on one scale. The wwPDB validation files hold no
+calculated structure factors, so they give neither value.
 
 Each map is read at two positions for every atom. One is the atom's own
 position in the atom table, which is the deposited model's. The other is the
@@ -33,8 +33,8 @@ calculated about, and the first says what the same data show where the
 depositor put the atom.
 
 The gradient of the difference map is read only at the atoms of the model
-the map was calculated about: PDB-Redo's position for PDB-Redo's maps, and
-the deposited one for the wwPDB maps. It is read from a map of the
+the map was calculated about, which is PDB-Redo's position for PDB-Redo's
+maps and the deposited one for the wwPDB maps. It is read from a map of the
 derivative itself, whose coefficients are those of the map times the
 reciprocal vector, so it is exact at the grid points and read between them
 by the same cubic interpolation as the values. From PDB-Redo's file the
@@ -514,8 +514,9 @@ def compute_structure_density(
         columns[rms_name] = rms
         rms_by_map.append(rms)
         readings.append(values)
-    # The difference map was the second. Its gradient is read at the atoms of
-    # the model it was calculated about.
+    # The difference map is the second of the two, so its root-mean-square
+    # density is rms_by_map[1]. Its gradient is read at the atoms of the model
+    # it is calculated about.
     gradients = _read_gradients(mtz, MAP_FOFC_LABELS, sample_rate, pdb_redo_positions)
     columns[list(PDB_REDO_GRADIENT_COLUMNS)] = gradients / rms_by_map[1]
     warnings: list[str] = []
@@ -721,7 +722,8 @@ def compute_validation_density(
         columns[value_name] = values / rms
         columns[rms_name] = rms
         rms_by_map.append(rms)
-    # The difference map was the second.
+    # The difference map is the second of the two, so its file is blocks[1]
+    # and its root-mean-square density is rms_by_map[1].
     gradients = _read_gradients(blocks[1], WWPDB_FOFC_LABELS, sample_rate, positions)
     columns[list(WWPDB_GRADIENT_COLUMNS)] = gradients / rms_by_map[1]
     columns[WWPDB_MAP_RESOLUTION_COLUMN] = float(

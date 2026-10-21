@@ -50,15 +50,19 @@ MAP_MAX_GRID_POINTS = 150_000_000
 CELL_LENGTH_TOLERANCE = 0.01
 CELL_ANGLE_TOLERANCE_DEG = 1.0
 
-# The status of a structure's maps. no_pdb_redo_entry stands for an entry
-# PDB-Redo has no reflection file for, no_validation_maps for an entry the
-# wwPDB archive has no validation map coefficients for, no_map_coefficients
-# for a file without the coefficients or without a usable reflection,
-# map_too_large for a unit
-# cell that exceeds the size limit at the lowest rate, cell_mismatch for a
-# reflection file whose cell is not the deposited one, and
-# models_not_paired for an entry in which no atom of PDB-Redo's model paired
-# with a deposited atom, so nothing shows the two share a frame.
+# The status of a structure's maps:
+#   ok                   the maps were read.
+#   no_pdb_redo_entry    PDB-Redo has no reflection file for the entry.
+#   no_validation_maps   the wwPDB archive has no validation map coefficients
+#                        for the entry.
+#   no_map_coefficients  the file lacks the coefficients or any usable
+#                        reflection.
+#   map_too_large        the unit cell exceeds the size limit even at the
+#                        lowest sample rate.
+#   cell_mismatch        the reflection file's cell is not the deposited one.
+#   models_not_paired    no atom of PDB-Redo's model paired with a deposited
+#                        atom, so nothing shows the two share a frame.
+#   failed               the engine raised.
 MAP_STATUS_OK = "ok"
 MAP_STATUS_NO_ENTRY = "no_pdb_redo_entry"
 MAP_STATUS_NO_VALIDATION_MAPS = "no_validation_maps"
