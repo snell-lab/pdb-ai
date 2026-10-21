@@ -186,9 +186,9 @@ def _dose_from_title(title: str | None) -> float | None:
     value = to_float(match.group(1)) if match else None
     if match is None or value is None:
         return None
-    if match.group(2) is not None:
-        value *= 10 ** int(match.group(2))
-    return value / _UNITS_PER_MGY[match.group(3).upper()]
+    exponent = match.group(2)
+    scale = 10.0 ** int(exponent) if exponent is not None else 1.0
+    return value * scale / _UNITS_PER_MGY[match.group(3).upper()]
 
 
 # A time-resolved or pump-probe experiment, as titles and keywords name it,
