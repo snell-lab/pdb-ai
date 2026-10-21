@@ -113,6 +113,24 @@ _PDB_REDO_POSITION_COLUMNS = ("pdb_redo_x", "pdb_redo_y", "pdb_redo_z")
 # The two maps in the order of the value columns.
 _MAPS = (MAP_2FOFC_LABELS, MAP_FOFC_LABELS)
 
+# The density columns in the order they are written.
+_COLUMN_ORDER = (
+    *DEPOSITED_VALUE_COLUMNS,
+    *PDB_REDO_VALUE_COLUMNS,
+    *DEPOSITED_ABSOLUTE_COLUMNS,
+    *PDB_REDO_ABSOLUTE_COLUMNS,
+    *PDB_REDO_GRADIENT_COLUMNS,
+    *PDB_REDO_SHIFT_COLUMNS,
+    ATOM_STATUS_COLUMN,
+    *RMS_COLUMNS,
+    MAP_RESOLUTION_COLUMN,
+    MAP_SAMPLE_RATE_COLUMN,
+    MAP_STATUS_COLUMN,
+)
+
+# The pairs of orthogonal axes of the six distinct components of a curvature.
+_CURVATURE_AXES = ((0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2))
+
 type Cell = tuple[float, float, float, float, float, float]
 # A set of reflections gemmi can transform to a map, PDB-Redo's MTZ file or a
 # reflection block of a wwPDB validation file.
@@ -169,21 +187,6 @@ def _empty_columns(index: pd.Index, status: str) -> pd.DataFrame:
     columns[ATOM_STATUS_COLUMN] = pd.Series(status, index=index, dtype=object)
     columns[MAP_STATUS_COLUMN] = pd.Series(status, index=index, dtype=object)
     return columns[list(_COLUMN_ORDER)]
-
-
-_COLUMN_ORDER = (
-    *DEPOSITED_VALUE_COLUMNS,
-    *PDB_REDO_VALUE_COLUMNS,
-    *DEPOSITED_ABSOLUTE_COLUMNS,
-    *PDB_REDO_ABSOLUTE_COLUMNS,
-    *PDB_REDO_GRADIENT_COLUMNS,
-    *PDB_REDO_SHIFT_COLUMNS,
-    ATOM_STATUS_COLUMN,
-    *RMS_COLUMNS,
-    MAP_RESOLUTION_COLUMN,
-    MAP_SAMPLE_RATE_COLUMN,
-    MAP_STATUS_COLUMN,
-)
 
 
 def _without_maps(index: pd.Index, status: str, warning: str) -> DensityComputation:
@@ -263,8 +266,15 @@ def _read_map(
     return rms, values
 
 
-# The pairs of orthogonal axes of the six distinct components of a curvature.
-_CURVATURE_AXES = ((0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2))
+def _wrapped_indices(size: int) -> npt.NDArray[np.float64]:
+    """Return the Miller index of each grid point along an axis of ``size`` points.
+
+    The indices run up from zero and wrap to negative values past half the
+    grid, as ``numpy.fft.fftfreq(size, 1 / size)`` gives them.
+    """
+    indices = np.arange(size, dtype=np.float64)
+    indices[indices >= (size + 1) // 2] -= size
+    return indices
 
 
 def _derivative_map(
@@ -308,17 +318,6 @@ def _derivative_map(
             factor *= -2j * math.pi * component
         coefficients[h_index] *= factor.astype(np.complex64)
     return gemmi.transform_f_phi_grid_to_map(grid)
-
-
-def _wrapped_indices(size: int) -> npt.NDArray[np.float64]:
-    """Return the Miller index of each grid point along an axis of ``size`` points.
-
-    The indices run up from zero and wrap to negative values past half the
-    grid, as ``numpy.fft.fftfreq(size, 1 / size)`` gives them.
-    """
-    indices = np.arange(size, dtype=np.float64)
-    indices[indices >= (size + 1) // 2] -= size
-    return indices
 
 
 def _read_derivatives(
