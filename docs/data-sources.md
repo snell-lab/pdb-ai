@@ -32,22 +32,22 @@ and `pdb_redo/` subdirectories for structure files. A cached file is reused for
 fetched again, because entries are revised after deposition. To re-fetch one
 sooner, delete it. A response that is not mmCIF never replaces a cached
 structure file, and one that does not start as an MTZ or gzip file never
-replaces a cached reflection file. Cache file names use the lower-cased PDB ID or UniProt
-accession, as in `1abc_metadata.json` or `p69905.json`. Paths below are relative
-to `mmcif/`.
+replaces a cached reflection file. Cache file names use the lower-cased PDB ID
+or UniProt accession, as in `1abc_metadata.json` or `p69905.json`. Paths below
+are relative to `mmcif/`.
 
 | Cache file | Controls |
-|------------|---------|
+|------------|----------|
 | `rcsb/{pdb_id}.cif` | RCSB structure (coordinates, B-factors, ANISOU) |
 | `pdb_redo/{pdb_id}.cif` | PDB-Redo structure (comparison source and RABDAM input) |
 | `pdb_redo/{pdb_id}_final.mtz` | PDB-Redo reflection file (density engine input) |
-| `validation_maps/{pdb_id}_2fofc_map_coef.cif.gz`, `validation_maps/{pdb_id}_fofc_map_coef.cif.gz` | wwPDB validation map coefficients (density engine input) |
+| `validation_maps/{pdb_id}_2fofc_map_coef.cif.gz` | wwPDB validation 2mFo−DFc map coefficients (density engine input) |
+| `validation_maps/{pdb_id}_fofc_map_coef.cif.gz` | wwPDB validation mFo−DFc map coefficients (density engine input) |
 | `pdb_redo_mirror/{mid}/{pdb_id}/` | A local copy of PDB-Redo's databank, read before the network and never expired (see below) |
 | `{pdb_id}_metadata.json` | The RCSB Core Entry record, as RCSB sent it |
 | `{pdb_id}_validation.json` | Parsed validation report |
 | `afdb/entities/{pdb_id}.json` | Complete RCSB entity-to-UniProt alignment discovery |
 | `afdb/models/{uniprot_id}.json` | Completely successful AFDB pLDDT and per-position model provenance. Failures are not cached, so they are retried. |
-
 
 ### A local copy of PDB-Redo
 

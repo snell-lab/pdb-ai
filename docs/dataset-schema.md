@@ -24,10 +24,10 @@ Every enrichment engine feeds into the same fully-computed atom frame.
     SASA/RASA contexts, eligibility masks, B-factor statistics, AlphaFold
     Database provenance/pLDDT, …), keyed by `residue_key`, with a `chain_key`
     foreign key.
-  - The chains table: columns constant within a chain, keyed by `chain_key`: each
-    chain's identity and, with `--include-uniprot`, the RCSB sequence-cluster
-    identifiers of its polymer entity (`sequence_cluster_30` through
-    `sequence_cluster_100`).
+  - The chains table: columns constant within a chain, keyed by `chain_key`:
+    each chain's identity and, with `--include-uniprot`, the RCSB
+    sequence-cluster identifiers of its polymer entity (`sequence_cluster_30`
+    through `sequence_cluster_100`).
   - The structures table: scientific/experimental columns constant for the whole
     structure (resolution, r_work, bnet_pdb_redo, radiation/beam conditions,
     crystallographic quality, …), keyed by `pdb_id`.
@@ -81,8 +81,6 @@ atom is taken from a later one. A column that should be constant within its
 residue, chain, or structure but holds different present values there is logged
 as a warning, since it needs a finer granularity, and the first present value is
 kept.
-
-
 
 ## Engine tables
 
@@ -152,7 +150,6 @@ with `keep_default_na=False`, `na_values=[""]`, and
 missing, and `float_precision="round_trip"` reads every number back as the value
 that was written, where the default parser can change the last digit.
 
-
 ## Column profiles
 
 Profiles are named column presets. Apply one with `--profile <id>` on the CLI or
@@ -169,9 +166,10 @@ only the density engine on, it keeps the base columns and the density columns,
 and it leaves out the columns of a map source the run does not read. `minimal`
 switches on the engines its columns need (see `toggles` in the `/api/profiles`
 response). An engine the run's technique rules out stays off and is reported
-rather than failing the run (see [Technique selection](cli.md#technique-selection)),
-and the profile's filter leaves that engine's columns out, so they are not
-reported missing. A column filter you name yourself is applied as given.
+rather than failing the run (see
+[Technique selection](cli.md#technique-selection)), and the profile's filter
+leaves that engine's columns out, so they are not reported missing. A column
+filter you name yourself is applied as given.
 
 Profiles name RABDAM columns by wildcard patterns, such as `bnet*` and
 `rabdam_alignment*`, so each profile resolves to whichever [column
@@ -189,7 +187,6 @@ could mean several columns is skipped and reported.
 If an include filter matches nothing, PDB-AI reports the unmatched request. It
 retains only the available structure identity column instead of returning the
 unfiltered dataset.
-
 
 ## Dataset columns
 
@@ -495,7 +492,8 @@ writes the calculated density and the difference density at every atom on one
 scale. The wwPDB validation files hold no calculated structure factors, so
 their columns have neither. Each source also gives the gradient of its
 difference map at the atoms of the model it was calculated about, and
-PDB-Redo's maps the shift of each atom that the gradient implies. How the maps are made and read is described under
+PDB-Redo's maps the shift of each atom that the gradient implies. How the maps
+are made and read is described under
 [Electron density at atoms](scientific-methods.md#electron-density-at-atoms).
 The values are measurements and are not thresholded.
 

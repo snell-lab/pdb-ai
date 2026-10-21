@@ -9,8 +9,8 @@ engines. Current analysis engines emphasize radiation-damage metrics, solvent
 accessibility, and electron density at atoms.
 Data-source engines add PDB-Redo comparisons, map coefficients from
 PDB-Redo and the wwPDB, wwPDB validation data, UniProt mappings, and AlphaFold
-confidence scores. The engine system can support additional structural biology analyses
-without changing the dataset pipeline.
+confidence scores. The engine system can support additional structural biology
+analyses without changing the dataset pipeline.
 
 PDB-AI provides a command-line interface, a Python API, and a local Flask web
 application.

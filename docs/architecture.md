@@ -107,14 +107,15 @@ filter on. They are not techniques.
 - **Relationships between atoms go in engine tables.** An annotation engine's
   `EngineSpec` can declare `TableSpec` records for data with many atoms per row,
   such as a pair of bonded atoms or a metal and its donor atoms. None of the
-  current built-in engines declares one. `EngineResult.tables` carries the rows. Before any
-  atom column merges, the coordinator rejects undeclared tables or columns and
-  missing key or link columns, then casts every column to its declared type,
-  then rejects missing or duplicate keys and values outside a column's
-  categories. Each structure writes `partials/<table>/<entry>.csv`, header-only
-  when it has no rows, and a structure is resumed as complete only when every
-  enabled table's partial exists. Assembly publishes each table as its own file
-  in both output shapes. See [Engine tables](dataset-schema.md#engine-tables).
+  current built-in engines declares one. `EngineResult.tables` carries the rows.
+  Before any atom column merges, the coordinator rejects undeclared tables or
+  columns and missing key or link columns, then casts every column to its
+  declared type, then rejects missing or duplicate keys and values outside a
+  column's categories. Each structure writes `partials/<table>/<entry>.csv`,
+  header-only when it has no rows, and a structure is resumed as complete only
+  when every enabled table's partial exists. Assembly publishes each table as
+  its own file in both output shapes. See
+  [Engine tables](dataset-schema.md#engine-tables).
 - **Disabling an engine drops its columns entirely** from the output. Toggles
   are inclusion/exclusion, not "compute it anyway and blank it out."
 - **PDB-Redo's actual re-refined coordinates are exposed directly**, not just as
@@ -205,7 +206,7 @@ a stub engine pair that nothing else names and runs it end to end.
 
 ## Project structure
 
-```
+```text
 pdb-ai/
 ├── pdbai/                               # Main Python package
 │   ├── __init__.py                      # Public API: the two dataset builders
@@ -308,7 +309,7 @@ pdb-ai/
 
 ### Runtime workspace layout
 
-```
+```text
 workspace/
 ├── mmcif/                            # Download caches
 │   ├── <id>_metadata.json            # RCSB entry records
@@ -337,4 +338,3 @@ workspace/
 ├── runs/.deleting-<run_id>-<hex>/    # A run being deleted; never listed
 └── pdb_atom_site_dataset.csv         # Published primary table (CLI and library)
 ```
-

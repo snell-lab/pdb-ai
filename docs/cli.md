@@ -7,7 +7,7 @@ integrate PDB-AI into another workflow.
 
 ## CLI reference
 
-```
+```text
 python -m pdbai [PDB_IDS ...] [OPTIONS]
 ```
 
@@ -277,7 +277,6 @@ failed archive search, and a search matching nothing also exit with `2`, before
 anything is downloaded, and print their message on standard error as `<prog>:
 error: <message>`. Other errors end the command with a traceback and status `1`.
 
-
 ## Library API
 
 Select a cohort from the archive and record how it was chosen:
@@ -403,4 +402,3 @@ that ran for it (the same values as in `run_report.csv`).
 entry never reached or whose outcome was never recorded, so a step that may not
 have been tried is never reported as failed. `metadata_ok` is likewise `None`
 until a download's RCSB record is sought, and always `None` for an upload.
-

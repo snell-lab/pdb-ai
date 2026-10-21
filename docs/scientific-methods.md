@@ -137,8 +137,8 @@ first value given in MGy, kGy, or Gy in the entry title, as dose-series entries
 often state it there, and is missing for most entries. A value in kGy is divided
 by 1,000 and one in Gy by 1,000,000, a value may be written in scientific
 notation ("7.88x10^3 Gy"), and a dose rate, such as "40 kGy/s", is not read.
-Room-temperature and serial entries mostly state their dose in kGy. `is_high_radiation_dose` is true
-above 5 MGy, a cut-off PDB-AI chose.
+Room-temperature and serial entries mostly state their dose in kGy.
+`is_high_radiation_dose` is true above 5 MGy, a cut-off PDB-AI chose.
 
 ## Radiation damage (RABDAM)
 
@@ -517,11 +517,11 @@ gemmi's map and from a map made by CCP4 `fft` agreed with a correlation of
 
 ### Two positions
 
-Each of PDB-Redo's maps is read twice for every atom. The first position is the atom's own, in
-the deposited model, which is the model the atom table describes. The second is
-the position PDB-Redo's re-refined model gives the same atom, from the PDB-Redo
-comparison's pairing of the two models (see [Cross-file atom
-alignment](#cross-file-atom-alignment)).
+Each of PDB-Redo's maps is read twice for every atom. The first position is the
+atom's own, in the deposited model, which is the model the atom table describes.
+The second is the position PDB-Redo's re-refined model gives the same atom, from
+the PDB-Redo comparison's pairing of the two models (see
+[Cross-file atom alignment](#cross-file-atom-alignment)).
 
 The maps were calculated about PDB-Redo's model, so the second position is the
 one the difference map belongs to: a negative value there says PDB-Redo's
@@ -854,9 +854,10 @@ Ramachandran and rotamer outliers.
 
 The validation XML is downloaded from:
 
-```
+```text
 https://files.rcsb.org/pub/pdb/validation_reports/{mid}/{pdb_id}/{pdb_id}_validation.xml.gz
 ```
+
 where `{mid}` is the 2nd and 3rd characters of the lower-case PDB ID (e.g. `mc`
 for `5mcc`). The gzip-compressed XML is decompressed in memory and parsed with
 `xml.etree.ElementTree`. Parsed results are cached in a
