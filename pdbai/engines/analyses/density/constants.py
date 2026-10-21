@@ -11,15 +11,12 @@ from __future__ import annotations
 MAP_2FOFC_LABELS = ("FWT", "PHWT")
 MAP_FOFC_LABELS = ("DELFWT", "PHDELWT")
 
-# The columns of the same file that hold the calculated structure factors of
-# PDB-Redo's whole model, bulk solvent included. They are the DFc of the map
-# coefficients. In each of 2,134 files of the databank that were checked,
-# FWT less FC_ALL equals DELFWT at every reflection, to within 2 parts in
-# 10 million, or twice DELFWT in the 60 files of a twinned refinement. So the
-# calculated map is on the scale of the other two, and the 2mFo−DFc map less
-# the calculated map is the map of 2(mFo−DFc) in every file. Each of those
-# files holds these two columns, and none of a sample of 1,500 held FC or
-# PHIC.
+# The columns of the same file that hold PDB-Redo's calculated structure
+# factors (DFc), from its whole model with bulk solvent. Their map is on the
+# same scale as the two above, so it gives the density the model places at an
+# atom, and the 2mFo−DFc map minus this map gives the difference density on
+# that scale. DELFWT is not used for it, because Refmac halves DELFWT in a
+# twinned refinement.
 MAP_FC_LABELS = ("FC_ALL", "PHIC_ALL")
 
 # The items of the two wwPDB validation reflection files that hold the map
@@ -29,16 +26,14 @@ WWPDB_2FOFC_LABELS = ("pdbx_FWT", "pdbx_PHWT")
 WWPDB_FOFC_LABELS = ("pdbx_DELFWT", "pdbx_DELPHWT")
 
 # How finely a map is sampled, as the number of grid points per high-resolution
-# limit. A rate of 4 puts grid points a quarter of the resolution apart. With
-# cubic interpolation, the value read at an atom then lies within about 0.05
-# of a root-mean-square density of the value a much finer map gives. Linear
-# interpolation at the usual rate of 3 is off by about 0.6 of one, since it
-# flattens every peak, and that is why the engine uses neither.
+# limit. A rate of 4 puts grid points a quarter of the resolution apart, and
+# with cubic interpolation the value read at an atom is then close to the
+# value a much finer map gives. Linear interpolation at the usual rate of 3
+# flattens every peak, so the engine uses neither.
 MAP_SAMPLE_RATE = 4.0
 
-# The lowest rate a large map may be sampled at. At 2.5 the value read at an
-# atom is still within about 0.2 of a root-mean-square density of the fine
-# value for the 2mFo−DFc map and within 0.1 for the difference map.
+# The lowest rate a large map may be sampled at, the coarsest at which the
+# value read at an atom stays close to the value of a finer map.
 MAP_MIN_SAMPLE_RATE = 2.5
 
 # The most grid points one map may hold. A map of this size takes 0.6 GB as
